@@ -76,6 +76,13 @@ Tenant: angkor-quality-foods
 - Regression tests for unauthenticated access, cross-tenant validation, audit-chain verification, and tamper detection
 - Expanded test suite across backend APIs, frontend workspace route, QMS module, workflow actions, and audit integrity
 
+## Phase 6 Documentation And Deployment
+
+- GitHub Actions CI workflow template for tests, formatting, npm audit, and frontend build
+- Deployment preparation guide in `docs/deployment-preparation.md`
+- API reference in `docs/api-reference.md`
+- Release checklist in `docs/release-checklist.md`
+
 ## API
 
 Authenticate:
@@ -149,5 +156,4 @@ Audit chain valid. Checked 8 entries; legacy entries: 0.
 - Add file upload/storage for controlled document versions
 - Add request classes/resources for stricter API contracts
 - Add edit screens and validation summaries for Phase 3 forms
-- Phase 6 documentation and deployment preparation
 - Expand ISO 22000 HACCP, CCP, OPRP, and monitoring-record modules
