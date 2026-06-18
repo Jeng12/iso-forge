@@ -144,6 +144,26 @@ class Tenant extends Model
         return $this->hasMany(AwarenessAcknowledgement::class);
     }
 
+    public function incidentReports(): HasMany
+    {
+        return $this->hasMany(IncidentReport::class);
+    }
+
+    public function incidentActions(): HasMany
+    {
+        return $this->hasMany(IncidentAction::class);
+    }
+
+    public function emergencyResponsePlans(): HasMany
+    {
+        return $this->hasMany(EmergencyResponsePlan::class);
+    }
+
+    public function emergencyDrills(): HasMany
+    {
+        return $this->hasMany(EmergencyDrill::class);
+    }
+
     public function correctiveActions(): HasMany
     {
         return $this->hasMany(CorrectiveAction::class);

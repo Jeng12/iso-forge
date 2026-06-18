@@ -41,6 +41,11 @@ class IsoForgeController extends Controller
                 'open_training_assignments' => $tenant->trainingAssignments()->whereNotIn('status', ['Completed'])->count(),
                 'competent_records' => $tenant->trainingRecords()->where('competency_status', 'Competent')->count(),
                 'awareness_acknowledgements' => $tenant->awarenessAcknowledgements()->count(),
+                'open_incidents' => $tenant->incidentReports()->whereNotIn('status', ['Closed', 'Contained'])->count(),
+                'emergency_plans' => $tenant->emergencyResponsePlans()->count(),
+                'emergency_drills' => $tenant->emergencyDrills()->count(),
+                'incident_response_capas' => $tenant->incidentReports()->whereNotNull('corrective_action_id')->count()
+                    + $tenant->emergencyDrills()->whereNotNull('corrective_action_id')->count(),
                 'audit_events' => $tenant->auditLogs()->count(),
             ],
             'latest_audit_hash' => $tenant->auditLogs()->latest('id')->value('entry_hash'),

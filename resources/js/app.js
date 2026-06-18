@@ -39,6 +39,12 @@ if (root) {
             awareness_acknowledgements: [],
             roles: [],
         },
+        incidentResponse: {
+            incident_reports: [],
+            actions: [],
+            emergency_plans: [],
+            emergency_drills: [],
+        },
         correctiveActions: [],
         tasks: [],
         auditLogs: [],
@@ -92,6 +98,13 @@ if (root) {
         trainingRequirementRoleSelect: document.getElementById('training-requirement-role-select'),
         trainingRequirementProgramSelect: document.getElementById('training-requirement-program-select'),
         trainingAwarenessDocumentSelect: document.getElementById('training-awareness-document-select'),
+        incidentReportsBody: document.getElementById('incident-reports-body'),
+        incidentActionsList: document.getElementById('incident-actions-list'),
+        emergencyPlansBody: document.getElementById('emergency-plans-body'),
+        emergencyDrillsList: document.getElementById('emergency-drills-list'),
+        incidentSourceControlSelect: document.getElementById('incident-source-control-select'),
+        incidentReportSelect: document.getElementById('incident-report-select'),
+        emergencyPlanSelect: document.getElementById('emergency-plan-select'),
         objectiveForm: document.getElementById('objective-form'),
         auditForm: document.getElementById('audit-form'),
         haccpPlanForm: document.getElementById('haccp-plan-form'),
@@ -105,6 +118,10 @@ if (root) {
         trainingAssignmentForm: document.getElementById('training-assignment-form'),
         trainingRecordForm: document.getElementById('training-record-form'),
         trainingAwarenessForm: document.getElementById('training-awareness-form'),
+        incidentReportForm: document.getElementById('incident-report-form'),
+        incidentActionForm: document.getElementById('incident-action-form'),
+        emergencyPlanForm: document.getElementById('emergency-plan-form'),
+        emergencyDrillForm: document.getElementById('emergency-drill-form'),
         capaForm: document.getElementById('capa-form'),
     };
 
@@ -165,11 +182,11 @@ if (root) {
     };
 
     const renderStatusBadge = (status) => {
-        const color = status === 'Approved' || status === 'Completed' || status === 'Verified' || status === 'Active' || status === 'Pass' || status === 'Current' || status === 'Competent' || status === 'Acknowledged'
+        const color = status === 'Approved' || status === 'Completed' || status === 'Verified' || status === 'Active' || status === 'Pass' || status === 'Current' || status === 'Competent' || status === 'Acknowledged' || status === 'Contained' || status === 'Effective' || status === 'Closed'
             ? 'bg-emerald-100 text-emerald-800'
-            : status === 'Deviation' || status === 'Rejected' || status === 'Fail' || status === 'Overdue' || status === 'Expired' || status === 'Hold'
+            : status === 'Deviation' || status === 'Rejected' || status === 'Fail' || status === 'Overdue' || status === 'Expired' || status === 'Hold' || status === 'Critical' || status === 'Failed'
                 ? 'bg-red-100 text-red-800'
-            : status === 'Pending' || status === 'Waiting' || status === 'Under Review' || status === 'Conditional' || status === 'Expiring' || status === 'Adjusted' || status === 'Assigned' || status === 'Needs Coaching'
+            : status === 'Pending' || status === 'Waiting' || status === 'Under Review' || status === 'Conditional' || status === 'Expiring' || status === 'Adjusted' || status === 'Assigned' || status === 'Needs Coaching' || status === 'Major' || status === 'Needs Improvement'
                 ? 'bg-amber-100 text-amber-800'
                 : 'bg-sky-100 text-sky-800';
 
@@ -207,6 +224,10 @@ if (root) {
             ['Open Training', metrics.open_training_assignments ?? 0],
             ['Competent Records', metrics.competent_records ?? 0],
             ['Awareness', metrics.awareness_acknowledgements ?? 0],
+            ['Open Incidents', metrics.open_incidents ?? 0],
+            ['Emergency Plans', metrics.emergency_plans ?? 0],
+            ['Emergency Drills', metrics.emergency_drills ?? 0],
+            ['Incident CAPA', metrics.incident_response_capas ?? 0],
             ['Audit Events', metrics.audit_events ?? 0],
         ];
 
@@ -575,6 +596,101 @@ if (root) {
         `).join('') || '<div class="p-4 text-sm text-zinc-500">No awareness acknowledgements found.</div>';
     };
 
+    const sourceControlLabel = (type, control) => {
+        if (!control) {
+            return '-';
+        }
+
+        const prefix = String(type ?? '').includes('CriticalControlPoint')
+            ? 'CCP'
+            : String(type ?? '').includes('OperationalPrerequisiteProgram')
+                ? 'OPRP'
+                : 'PRP';
+
+        return `${prefix} - ${control.name ?? control.title ?? control.id}`;
+    };
+
+    const renderIncidentResponse = () => {
+        const sourceOptions = [
+            { value: '', label: 'No source control' },
+            ...(state.fsms.ccps ?? []).map((ccp) => ({
+                value: `ccp:${ccp.id}`,
+                label: `CCP - ${ccp.name}`,
+            })),
+            ...(state.fsms.oprps ?? []).map((oprp) => ({
+                value: `oprp:${oprp.id}`,
+                label: `OPRP - ${oprp.name}`,
+            })),
+            ...(state.fsms.prps ?? []).map((prp) => ({
+                value: `prp:${prp.id}`,
+                label: `PRP - ${prp.name}`,
+            })),
+        ];
+        const incidentOptions = (state.incidentResponse.incident_reports ?? []).map((report) => {
+            return `<option value="${report.id}">${escapeHtml(report.reference)} - ${escapeHtml(report.title)}</option>`;
+        }).join('');
+        const planOptions = (state.incidentResponse.emergency_plans ?? []).map((plan) => {
+            return `<option value="${plan.id}">${escapeHtml(plan.name)}</option>`;
+        }).join('');
+
+        els.incidentSourceControlSelect.innerHTML = sourceOptions.map((option) => {
+            return `<option value="${option.value}">${escapeHtml(option.label)}</option>`;
+        }).join('');
+        els.incidentReportSelect.innerHTML = incidentOptions;
+        els.emergencyPlanSelect.innerHTML = planOptions;
+
+        els.incidentReportsBody.innerHTML = (state.incidentResponse.incident_reports ?? []).map((report) => `
+            <tr>
+                <td class="min-w-72 px-4 py-3">
+                    <div class="font-medium">${escapeHtml(report.reference)}</div>
+                    <div class="mt-1 text-xs font-medium text-zinc-500">${escapeHtml(report.title)}</div>
+                </td>
+                <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml(report.owner?.name ?? report.reporter?.name)}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml(sourceControlLabel(report.source_control_type, report.source_control))}</td>
+                <td class="whitespace-nowrap px-4 py-3">${renderStatusBadge(report.severity)}</td>
+                <td class="whitespace-nowrap px-4 py-3">${renderStatusBadge(report.status)}</td>
+            </tr>
+        `).join('');
+
+        els.incidentActionsList.innerHTML = (state.incidentResponse.actions ?? []).map((action) => `
+            <div class="p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <div class="font-medium">${escapeHtml(action.incident_report?.reference)} - ${escapeHtml(action.action_type)}</div>
+                        <div class="mt-1 text-sm text-zinc-600">${escapeHtml(action.description)}</div>
+                        <div class="mt-1 text-xs font-medium text-zinc-500">${escapeHtml(action.responsible_user?.name)} - due ${escapeHtml(action.due_date ?? '-')}</div>
+                    </div>
+                    ${renderStatusBadge(action.status)}
+                </div>
+            </div>
+        `).join('') || '<div class="p-4 text-sm text-zinc-500">No incident actions found.</div>';
+
+        els.emergencyPlansBody.innerHTML = (state.incidentResponse.emergency_plans ?? []).map((plan) => `
+            <tr>
+                <td class="min-w-72 px-4 py-3">
+                    <div class="font-medium">${escapeHtml(plan.name)}</div>
+                    <div class="mt-1 text-xs font-medium text-zinc-500">${escapeHtml(plan.related_document?.document_number ?? 'No document link')}</div>
+                </td>
+                <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml(plan.owner?.name)}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml(plan.next_review_due_at ?? '-')}</td>
+                <td class="whitespace-nowrap px-4 py-3">${renderStatusBadge(plan.status)}</td>
+            </tr>
+        `).join('');
+
+        els.emergencyDrillsList.innerHTML = (state.incidentResponse.emergency_drills ?? []).map((drill) => `
+            <div class="p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <div class="font-medium">${escapeHtml(drill.emergency_response_plan?.name)} - ${escapeHtml(drill.result)}</div>
+                        <div class="mt-1 text-sm text-zinc-600">${escapeHtml(drill.completed_at)} - ${escapeHtml(drill.facilitator?.name)} - score ${escapeHtml(drill.effectiveness_score ?? '-')}</div>
+                        <div class="mt-1 text-xs font-medium text-zinc-500">${escapeHtml(drill.notes ?? drill.scenario_notes ?? '')}${drill.corrective_action ? ` - ${escapeHtml(drill.corrective_action.title)}` : ''}</div>
+                    </div>
+                    ${renderStatusBadge(drill.result)}
+                </div>
+            </div>
+        `).join('') || '<div class="p-4 text-sm text-zinc-500">No emergency drills found.</div>';
+    };
+
     const renderTasks = () => {
         const taskRows = state.tasks.map((task) => {
             const canComplete = task.status !== 'Completed'
@@ -623,6 +739,7 @@ if (root) {
         renderFsms();
         renderSupplierQuality();
         renderTraining();
+        renderIncidentResponse();
         renderCapa();
         renderTasks();
         renderAudit();
@@ -652,6 +769,7 @@ if (root) {
             fsms,
             supplierQuality,
             training,
+            incidentResponse,
             correctiveActions,
             tasks,
             auditLogs,
@@ -665,6 +783,7 @@ if (root) {
             safeFetch(tenantPath('/fsms'), { haccp_plans: [], hazards: [], ccps: [], oprps: [], prps: [], monitoring_records: [] }),
             safeFetch(tenantPath('/supplier-quality'), { suppliers: [], evaluations: [], certificates: [], equipment_assets: [], calibration_records: [] }),
             safeFetch(tenantPath('/training'), { programs: [], requirements: [], assignments: [], records: [], awareness_acknowledgements: [], roles: [] }),
+            safeFetch(tenantPath('/incident-response'), { incident_reports: [], actions: [], emergency_plans: [], emergency_drills: [] }),
             safeFetch(tenantPath('/corrective-actions')),
             safeFetch(tenantPath('/workflow-tasks')),
             safeFetch(tenantPath('/audit-logs')),
@@ -679,6 +798,7 @@ if (root) {
         state.fsms = fsms;
         state.supplierQuality = supplierQuality;
         state.training = training;
+        state.incidentResponse = incidentResponse;
         state.correctiveActions = correctiveActions;
         state.tasks = tasks;
         state.auditLogs = auditLogs;
@@ -1163,6 +1283,129 @@ if (root) {
             els.trainingAwarenessForm.reset();
             await loadWorkspace();
             showStatus('Awareness acknowledgement recorded.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.incidentReportForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.incidentReportForm);
+        const [sourceControlType, sourceControlId] = String(form.get('source_control') ?? '').split(':');
+        const detectedAt = form.get('detected_at')
+            ? new Date(form.get('detected_at')).toISOString()
+            : new Date().toISOString();
+        const severity = form.get('severity');
+        const payload = {
+            reference: form.get('reference'),
+            title: form.get('title'),
+            incident_type: form.get('incident_type'),
+            severity,
+            status: severity === 'Minor' ? 'Contained' : 'Open',
+            reported_by_id: Number(form.get('reported_by_id')),
+            owner_id: Number(form.get('owner_id')),
+            detected_at: detectedAt,
+            description: form.get('description'),
+            immediate_containment: form.get('immediate_containment') || null,
+        };
+
+        if (sourceControlType && sourceControlId) {
+            payload.source_control_type = sourceControlType;
+            payload.source_control_id = Number(sourceControlId);
+        }
+
+        try {
+            await api(tenantPath('/incident-response/reports'), {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            });
+            els.incidentReportForm.reset();
+            await loadWorkspace();
+            showStatus(severity === 'Major' || severity === 'Critical' ? 'Incident CAPA opened.' : 'Incident recorded.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.incidentActionForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.incidentActionForm);
+        const reportId = Number(form.get('incident_report_id'));
+
+        try {
+            await api(tenantPath(`/incident-response/reports/${reportId}/actions`), {
+                method: 'POST',
+                body: JSON.stringify({
+                    action_type: form.get('action_type'),
+                    description: form.get('description'),
+                    responsible_user_id: Number(form.get('responsible_user_id')),
+                    due_date: form.get('due_date') || null,
+                    status: 'Open',
+                }),
+            });
+            els.incidentActionForm.reset();
+            await loadWorkspace();
+            showStatus('Incident action created.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.emergencyPlanForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.emergencyPlanForm);
+        const responseSteps = String(form.get('response_steps') ?? '')
+            .split('\n')
+            .map((step) => step.trim())
+            .filter(Boolean);
+
+        try {
+            await api(tenantPath('/incident-response/emergency-plans'), {
+                method: 'POST',
+                body: JSON.stringify({
+                    name: form.get('name'),
+                    scenario: form.get('scenario'),
+                    owner_id: Number(form.get('owner_id')),
+                    review_frequency_days: Number(form.get('review_frequency_days') || 365),
+                    response_steps: responseSteps,
+                    status: 'Active',
+                }),
+            });
+            els.emergencyPlanForm.reset();
+            await loadWorkspace();
+            showStatus('Emergency plan created.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.emergencyDrillForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.emergencyDrillForm);
+        const planId = Number(form.get('emergency_response_plan_id'));
+        const result = form.get('result');
+        const payload = {
+            facilitator_id: Number(form.get('facilitator_id')),
+            scheduled_at: form.get('scheduled_at') || null,
+            completed_at: form.get('completed_at'),
+            result,
+            participants_count: Number(form.get('participants_count') || 0),
+            scenario_notes: form.get('scenario_notes') || null,
+            notes: form.get('notes') || null,
+        };
+
+        if (form.get('effectiveness_score') !== '') {
+            payload.effectiveness_score = Number(form.get('effectiveness_score'));
+        }
+
+        try {
+            await api(tenantPath(`/incident-response/emergency-plans/${planId}/drills`), {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            });
+            els.emergencyDrillForm.reset();
+            await loadWorkspace();
+            showStatus(result === 'Effective' ? 'Emergency drill recorded.' : 'Emergency drill CAPA opened.');
         } catch (error) {
             showStatus(error.message, 'error');
         }

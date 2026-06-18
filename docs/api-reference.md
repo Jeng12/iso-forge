@@ -95,6 +95,15 @@ All tenant routes use:
 - `POST /training/assignments/{trainingAssignment}/records`
 - `POST /training/awareness-acknowledgements`
 
+### Incident Response And Emergency Preparedness
+
+- `GET /incident-response`
+- `POST /incident-response/reports`
+- `POST /incident-response/reports/{incidentReport}/actions`
+- `PATCH /incident-response/actions/{incidentAction}`
+- `POST /incident-response/emergency-plans`
+- `POST /incident-response/emergency-plans/{emergencyResponsePlan}/drills`
+
 ## Authorization
 
 - Tenant middleware rejects cross-tenant access.
@@ -105,4 +114,5 @@ All tenant routes use:
 - `fsms.view` and `fsms.manage` control ISO 22000 module actions.
 - `supplier.view` and `supplier.manage` control supplier quality and calibration actions.
 - `training.view` and `training.manage` control training, competency, and awareness actions.
+- `incident.view` and `incident.manage` control incident response and emergency preparedness actions.
 - `audit.view` controls audit-ledger reads and manual audit entries.

@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CorrectiveActionController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\FsmsController;
+use App\Http\Controllers\Api\IncidentResponseController;
 use App\Http\Controllers\Api\IsoForgeController;
 use App\Http\Controllers\Api\QmsController;
 use App\Http\Controllers\Api\RiskController;
@@ -76,6 +77,13 @@ Route::middleware('auth:sanctum')->group(function (): void {
             Route::post('/training/programs/{trainingProgram}/assignments', [TrainingController::class, 'storeAssignment'])->middleware('permission:training.manage');
             Route::post('/training/assignments/{trainingAssignment}/records', [TrainingController::class, 'storeRecord'])->middleware('permission:training.manage');
             Route::post('/training/awareness-acknowledgements', [TrainingController::class, 'storeAwarenessAcknowledgement'])->middleware('permission:training.manage');
+
+            Route::get('/incident-response', [IncidentResponseController::class, 'overview'])->middleware('permission:incident.view,incident.manage');
+            Route::post('/incident-response/reports', [IncidentResponseController::class, 'storeReport'])->middleware('permission:incident.manage');
+            Route::post('/incident-response/reports/{incidentReport}/actions', [IncidentResponseController::class, 'storeAction'])->middleware('permission:incident.manage');
+            Route::patch('/incident-response/actions/{incidentAction}', [IncidentResponseController::class, 'updateAction'])->middleware('permission:incident.manage');
+            Route::post('/incident-response/emergency-plans', [IncidentResponseController::class, 'storePlan'])->middleware('permission:incident.manage');
+            Route::post('/incident-response/emergency-plans/{emergencyResponsePlan}/drills', [IncidentResponseController::class, 'storeDrill'])->middleware('permission:incident.manage');
 
             Route::get('/audit-logs', [IsoForgeController::class, 'auditLogs'])->middleware('permission:audit.view');
             Route::post('/audit-logs', [IsoForgeController::class, 'storeAuditLog'])->middleware('permission:audit.view');

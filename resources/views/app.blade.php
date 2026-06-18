@@ -52,6 +52,7 @@
                     <button data-tab="fsms" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">FSMS</button>
                     <button data-tab="supplier-quality" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">Suppliers</button>
                     <button data-tab="training" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">Training</button>
+                    <button data-tab="incident-response" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">Incidents</button>
                     <button data-tab="capa" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">CAPA</button>
                     <button data-tab="audit" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">Audit</button>
                 </nav>
@@ -675,6 +676,140 @@
                                     <input name="acknowledged_at" type="datetime-local" class="form-input">
                                     <textarea name="statement" placeholder="Statement" class="form-input min-h-20"></textarea>
                                     <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Acknowledge</button>
+                                </div>
+                            </form>
+                        </div>
+                    </section>
+
+                    <section data-panel="incident-response" class="panel hidden space-y-6">
+                        <div class="grid gap-6 xl:grid-cols-[1fr_380px]">
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Incident Reports</h3>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-zinc-200 text-left text-sm">
+                                        <thead class="bg-zinc-50 text-xs font-semibold uppercase tracking-normal text-zinc-500">
+                                            <tr>
+                                                <th class="px-4 py-3">Incident</th>
+                                                <th class="px-4 py-3">Owner</th>
+                                                <th class="px-4 py-3">Control</th>
+                                                <th class="px-4 py-3">Severity</th>
+                                                <th class="px-4 py-3">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="incident-reports-body" class="divide-y divide-zinc-100"></tbody>
+                                    </table>
+                                </div>
+                            </section>
+
+                            <form id="incident-report-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">New Incident</h3>
+                                <div class="space-y-3">
+                                    <input name="reference" required placeholder="Incident reference" class="form-input">
+                                    <input name="title" required placeholder="Title" class="form-input">
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input name="incident_type" required placeholder="Type" value="Food Safety" class="form-input">
+                                        <select name="severity" class="form-input">
+                                            <option>Minor</option>
+                                            <option>Major</option>
+                                            <option>Critical</option>
+                                        </select>
+                                    </div>
+                                    <select name="reported_by_id" class="form-input user-select"></select>
+                                    <select name="owner_id" class="form-input user-select"></select>
+                                    <select id="incident-source-control-select" name="source_control" class="form-input"></select>
+                                    <input name="detected_at" type="datetime-local" class="form-input">
+                                    <textarea name="description" required placeholder="Description" class="form-input min-h-20"></textarea>
+                                    <textarea name="immediate_containment" placeholder="Immediate containment" class="form-input min-h-20"></textarea>
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Record</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="grid gap-6 xl:grid-cols-2">
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Incident Actions</h3>
+                                </div>
+                                <div id="incident-actions-list" class="divide-y divide-zinc-100"></div>
+                            </section>
+
+                            <form id="incident-action-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">New Action</h3>
+                                <div class="space-y-3">
+                                    <select id="incident-report-select" name="incident_report_id" required class="form-input"></select>
+                                    <input name="action_type" required placeholder="Action type" value="Containment" class="form-input">
+                                    <textarea name="description" required placeholder="Action description" class="form-input min-h-20"></textarea>
+                                    <select name="responsible_user_id" class="form-input user-select"></select>
+                                    <input name="due_date" type="date" class="form-input">
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Create</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="grid gap-6 xl:grid-cols-[1fr_380px]">
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Emergency Plans</h3>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-zinc-200 text-left text-sm">
+                                        <thead class="bg-zinc-50 text-xs font-semibold uppercase tracking-normal text-zinc-500">
+                                            <tr>
+                                                <th class="px-4 py-3">Plan</th>
+                                                <th class="px-4 py-3">Owner</th>
+                                                <th class="px-4 py-3">Next Review</th>
+                                                <th class="px-4 py-3">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="emergency-plans-body" class="divide-y divide-zinc-100"></tbody>
+                                    </table>
+                                </div>
+                            </section>
+
+                            <form id="emergency-plan-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">New Emergency Plan</h3>
+                                <div class="space-y-3">
+                                    <input name="name" required placeholder="Plan name" class="form-input">
+                                    <textarea name="scenario" required placeholder="Scenario" class="form-input min-h-24"></textarea>
+                                    <select name="owner_id" class="form-input user-select"></select>
+                                    <input name="review_frequency_days" type="number" min="1" value="365" class="form-input">
+                                    <textarea name="response_steps" placeholder="Response steps, one per line" class="form-input min-h-20"></textarea>
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Create</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="grid gap-6 xl:grid-cols-2">
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Emergency Drills</h3>
+                                </div>
+                                <div id="emergency-drills-list" class="divide-y divide-zinc-100"></div>
+                            </section>
+
+                            <form id="emergency-drill-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">New Drill</h3>
+                                <div class="space-y-3">
+                                    <select id="emergency-plan-select" name="emergency_response_plan_id" required class="form-input"></select>
+                                    <select name="facilitator_id" class="form-input user-select"></select>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input name="scheduled_at" type="date" class="form-input">
+                                        <input name="completed_at" required type="date" class="form-input">
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <select name="result" class="form-input">
+                                            <option>Effective</option>
+                                            <option>Needs Improvement</option>
+                                            <option>Failed</option>
+                                        </select>
+                                        <input name="participants_count" type="number" min="0" value="3" class="form-input">
+                                    </div>
+                                    <input name="effectiveness_score" type="number" min="0" max="100" placeholder="Effectiveness score" class="form-input">
+                                    <textarea name="scenario_notes" placeholder="Scenario notes" class="form-input min-h-20"></textarea>
+                                    <textarea name="notes" placeholder="Notes" class="form-input min-h-20"></textarea>
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Record</button>
                                 </div>
                             </form>
                         </div>

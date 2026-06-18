@@ -25,6 +25,7 @@ Use this checklist before tagging or deploying a release.
 - [ ] QMS objective and audit records can be created by a `qms.manage` user.
 - [ ] Supplier quality and calibration records can be created by a `supplier.manage` user.
 - [ ] Training assignments, records, and awareness acknowledgements can be created by a `training.manage` user.
+- [ ] Incident reports, incident actions, emergency plans, and drills can be created by an `incident.manage` user.
 
 ## Security
 

@@ -14,9 +14,13 @@ use App\Models\Document;
 use App\Models\DocumentApproval;
 use App\Models\DocumentVersion;
 use App\Models\ElectronicSignature;
+use App\Models\EmergencyDrill;
+use App\Models\EmergencyResponsePlan;
 use App\Models\EquipmentAsset;
 use App\Models\HaccpPlan;
 use App\Models\HazardAnalysis;
+use App\Models\IncidentAction;
+use App\Models\IncidentReport;
 use App\Models\ManagementReview;
 use App\Models\MonitoringRecord;
 use App\Models\NonConformance;
@@ -68,6 +72,8 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Manage supplier quality module', 'slug' => 'supplier.manage'],
             ['name' => 'View training module', 'slug' => 'training.view'],
             ['name' => 'Manage training module', 'slug' => 'training.manage'],
+            ['name' => 'View incident response module', 'slug' => 'incident.view'],
+            ['name' => 'Manage incident response module', 'slug' => 'incident.manage'],
         ])->map(fn (array $permission) => Permission::create($permission));
 
         $adminRole = Role::create([
@@ -115,6 +121,8 @@ class DatabaseSeeder extends Seeder
             'supplier.manage',
             'training.view',
             'training.manage',
+            'incident.view',
+            'incident.manage',
         ])->pluck('id'));
         $auditorRole->permissions()->attach($permissions->whereIn('slug', [
             'document.view',
@@ -123,6 +131,7 @@ class DatabaseSeeder extends Seeder
             'fsms.view',
             'supplier.view',
             'training.view',
+            'incident.view',
         ])->pluck('id'));
         $operatorRole->permissions()->attach($permissions->whereIn('slug', [
             'document.view',
@@ -558,6 +567,64 @@ class DatabaseSeeder extends Seeder
             'statement' => 'Reviewed CCP Temperature Monitoring Work Instruction draft and understood escalation expectations.',
         ]);
 
+        $incidentReport = IncidentReport::create([
+            'tenant_id' => $tenant->id,
+            'reference' => 'IR-2026-0001',
+            'title' => 'Pasteurization chart recorder paper jam',
+            'incident_type' => 'Food Safety',
+            'severity' => 'Minor',
+            'status' => 'Contained',
+            'reported_by_id' => $jono->id,
+            'owner_id' => $joto->id,
+            'source_control_type' => CriticalControlPoint::class,
+            'source_control_id' => $ccp->id,
+            'detected_at' => now()->subHours(4),
+            'description' => 'Paper jam stopped the physical chart printout while digital pasteurization data stayed available.',
+            'immediate_containment' => 'Held batch record, exported digital trace, and verified no critical-limit breach occurred.',
+        ]);
+
+        $incidentAction = IncidentAction::create([
+            'tenant_id' => $tenant->id,
+            'incident_report_id' => $incidentReport->id,
+            'action_type' => 'Containment',
+            'description' => 'Attached digital pasteurization trace and reconciled the batch release packet.',
+            'responsible_user_id' => $jono->id,
+            'due_date' => now()->toDateString(),
+            'completed_at' => now()->subHours(2),
+            'status' => 'Completed',
+        ]);
+
+        $emergencyPlan = EmergencyResponsePlan::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Pasteurization failure emergency response',
+            'scenario' => 'Pasteurization CCP cannot be verified or validated thermal limit is missed.',
+            'owner_id' => $joto->id,
+            'related_document_id' => $pendingProcedure->id,
+            'review_frequency_days' => 365,
+            'last_reviewed_at' => now()->subMonth()->toDateString(),
+            'next_review_due_at' => now()->addMonths(11)->toDateString(),
+            'response_steps' => [
+                'Stop line',
+                'Hold affected batch',
+                'Notify QA lead',
+                'Verify calibration status',
+            ],
+            'status' => 'Active',
+        ]);
+
+        $emergencyDrill = EmergencyDrill::create([
+            'tenant_id' => $tenant->id,
+            'emergency_response_plan_id' => $emergencyPlan->id,
+            'facilitator_id' => $joto->id,
+            'scheduled_at' => now()->subDays(7)->toDateString(),
+            'completed_at' => now()->subDays(7)->toDateString(),
+            'result' => 'Effective',
+            'participants_count' => 3,
+            'effectiveness_score' => 92,
+            'scenario_notes' => 'Simulated chart loss during pasteurization verification.',
+            'notes' => 'Team contained affected records and escalated within the target time.',
+        ]);
+
         $workflow = Workflow::create([
             'tenant_id' => $tenant->id,
             'name' => 'CAPA Workflow',
@@ -711,6 +778,27 @@ class DatabaseSeeder extends Seeder
         AuditLog::appendFor($tenant->id, $jono->id, 'training.awareness.created', AwarenessAcknowledgement::class, $awarenessAcknowledgement->id, [], [
             'document_id' => $awarenessAcknowledgement->document_id,
             'status' => $awarenessAcknowledgement->status,
+        ]);
+
+        AuditLog::appendFor($tenant->id, $jono->id, 'incident_response.report.created', IncidentReport::class, $incidentReport->id, [], [
+            'reference' => $incidentReport->reference,
+            'severity' => $incidentReport->severity,
+            'status' => $incidentReport->status,
+        ]);
+
+        AuditLog::appendFor($tenant->id, $jono->id, 'incident_response.action.created', IncidentAction::class, $incidentAction->id, [], [
+            'incident_report_id' => $incidentAction->incident_report_id,
+            'status' => $incidentAction->status,
+        ]);
+
+        AuditLog::appendFor($tenant->id, $joto->id, 'incident_response.plan.created', EmergencyResponsePlan::class, $emergencyPlan->id, [], [
+            'name' => $emergencyPlan->name,
+            'next_review_due_at' => $emergencyPlan->next_review_due_at?->toDateString(),
+        ]);
+
+        AuditLog::appendFor($tenant->id, $joto->id, 'incident_response.drill.created', EmergencyDrill::class, $emergencyDrill->id, [], [
+            'result' => $emergencyDrill->result,
+            'effectiveness_score' => $emergencyDrill->effectiveness_score,
         ]);
     }
 }

@@ -1,6 +1,6 @@
 # ISO-Forge
 
-ISO-Forge is a Laravel prototype for a developer-centric ISO compliance framework. The current build follows the local project documents: multi-tenant data isolation, RBAC, document control, workflow tasks, ISO 9001 risk/CAPA records, ISO 22000 HACCP controls, supplier quality evidence, training competency evidence, electronic signatures, and a hash-chained audit ledger.
+ISO-Forge is a Laravel prototype for a developer-centric ISO compliance framework. The current build follows the local project documents: multi-tenant data isolation, RBAC, document control, workflow tasks, ISO 9001 risk/CAPA records, ISO 22000 HACCP controls, supplier quality evidence, training competency evidence, incident response and emergency drill evidence, electronic signatures, and a hash-chained audit ledger.
 
 ## Stack
 
@@ -40,6 +40,7 @@ Tenant: angkor-quality-foods
 - ISO 22000 HACCP plans, hazard analysis, CCP/OPRP controls, PRPs, and monitoring records
 - Supplier approvals, evaluations, certificates, equipment assets, and calibration records
 - Training programs, competency requirements, assignments, completion records, and awareness acknowledgements
+- Incident reports, containment actions, emergency response plans, and emergency drill records
 - SHA-256 audit log chaining with `previous_hash`, `payload_hash`, and `entry_hash`
 - Dashboard for documents, approvals, risks, CAPA, tasks, and audit ledger
 - Sanctum-protected API routes with tenant access checks
@@ -117,6 +118,16 @@ Tenant: angkor-quality-foods
 - Training browser tab for programs, requirements, assignments, completion records, and awareness evidence
 - Training API actions protected by `training.view` and `training.manage` permissions
 
+## Phase 10 Incident Response And Emergency Preparedness
+
+- Incident reports linked to FSMS controls through CCP, OPRP, or PRP source references
+- Incident containment/action records with responsible users, due dates, completion status, and audit events
+- Major and critical incident reports automatically open CAPA for verification
+- Emergency response plans with scenario, owner, review cadence, optional document link, and response steps
+- Emergency drills with participants, effectiveness score, result, and CAPA creation for poor outcomes
+- Incidents browser tab for reports, actions, emergency plans, and drill evidence
+- Incident Response API actions protected by `incident.view` and `incident.manage` permissions
+
 ## API
 
 Authenticate:
@@ -179,6 +190,12 @@ Available tenant routes:
 - `POST /api/tenants/{tenant:slug}/training/programs/{trainingProgram}/assignments`
 - `POST /api/tenants/{tenant:slug}/training/assignments/{trainingAssignment}/records`
 - `POST /api/tenants/{tenant:slug}/training/awareness-acknowledgements`
+- `GET /api/tenants/{tenant:slug}/incident-response`
+- `POST /api/tenants/{tenant:slug}/incident-response/reports`
+- `POST /api/tenants/{tenant:slug}/incident-response/reports/{incidentReport}/actions`
+- `PATCH /api/tenants/{tenant:slug}/incident-response/actions/{incidentAction}`
+- `POST /api/tenants/{tenant:slug}/incident-response/emergency-plans`
+- `POST /api/tenants/{tenant:slug}/incident-response/emergency-plans/{emergencyResponsePlan}/drills`
 - `GET /api/tenants/{tenant:slug}/audit-logs`
 - `POST /api/tenants/{tenant:slug}/audit-logs`
 
@@ -191,7 +208,7 @@ npm audit
 npm run build
 ```
 
-Current status: 32 tests passing and npm audit clean.
+Current status: 36 tests passing and npm audit clean.
 
 ## Verification Command
 
@@ -202,7 +219,7 @@ php artisan iso-forge:verify-audit-chain
 Expected result:
 
 ```text
-Audit chain valid. Checked 22 entries; legacy entries: 0.
+Audit chain valid. Checked 26 entries; legacy entries: 0.
 ```
 
 ## Next Development Targets
@@ -210,4 +227,4 @@ Audit chain valid. Checked 22 entries; legacy entries: 0.
 - Add file upload/storage for controlled document versions
 - Add request classes/resources for stricter API contracts
 - Add edit screens and validation summaries for Phase 3 forms
-- Add incident reporting and emergency-response evidence linked to FSMS controls
+- Add trend dashboards for incidents, CAPA ageing, training competency, and supplier risk
