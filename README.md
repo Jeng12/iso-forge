@@ -150,6 +150,16 @@ Tenant: angkor-quality-foods
 - Packets browser tab with summary metrics, preview, and download actions
 - Packet API actions protected by `review_packet.view` permission
 
+## Phase 13 Document Storage And Packet PDFs
+
+- Controlled document create/version endpoints accept multipart file uploads or existing file-path references
+- Uploaded document versions are stored on the local disk under tenant-scoped `documents/{tenant}` paths
+- Current document versions expose stored-file status and a protected download endpoint
+- Form request validation and JSON resources standardize document API contracts
+- Browser workspace includes document edit, new-version upload, validation-summary rendering, and stored-file downloads
+- Management review packets can render as dependency-free PDF attachments
+- Phase 13 verification results in `docs/phase13-testing-results.md`
+
 ## API
 
 Authenticate:
@@ -175,8 +185,12 @@ Available tenant routes:
 - `GET /api/tenants/{tenant:slug}/management-review-packets`
 - `GET /api/tenants/{tenant:slug}/management-review-packets/{managementReview}`
 - `GET /api/tenants/{tenant:slug}/management-review-packets/{managementReview}/download`
+- `GET /api/tenants/{tenant:slug}/management-review-packets/{managementReview}/pdf`
 - `GET /api/tenants/{tenant:slug}/documents`
 - `POST /api/tenants/{tenant:slug}/documents`
+- `PATCH /api/tenants/{tenant:slug}/documents/{document}`
+- `POST /api/tenants/{tenant:slug}/documents/{document}/versions`
+- `GET /api/tenants/{tenant:slug}/documents/{document}/versions/{documentVersion}/download`
 - `GET /api/tenants/{tenant:slug}/document-approvals`
 - `POST /api/tenants/{tenant:slug}/documents/{document}/approvals`
 - `POST /api/tenants/{tenant:slug}/document-approvals/{documentApproval}/approve`
@@ -234,7 +248,7 @@ npm audit
 npm run build
 ```
 
-Current status: 43 tests passing and npm audit clean.
+Current status: 48 tests passing and npm audit clean.
 
 ## Verification Command
 
@@ -242,15 +256,17 @@ Current status: 43 tests passing and npm audit clean.
 php artisan iso-forge:verify-audit-chain
 ```
 
-Expected result:
+Expected fresh-seed result:
 
 ```text
 Audit chain valid. Checked 26 entries; legacy entries: 0.
 ```
 
+The local development database may show a higher checked-entry count after live smoke tests or demo data entry.
+
 ## Next Development Targets
 
-- Add file upload/storage for controlled document versions
-- Add request classes/resources for stricter API contracts
-- Add edit screens and validation summaries for Phase 3 forms
-- Add PDF rendering for management review packets
+- Expand request/resource contracts across the remaining module APIs
+- Add edit screens for QMS, FSMS, supplier, training, and incident forms
+- Add document retention, superseded-version review, and storage pruning workflows
+- Add richer PDF packet sections with paginated tables and signature blocks

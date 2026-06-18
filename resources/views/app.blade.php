@@ -166,6 +166,7 @@
                                                 <th class="px-4 py-3">Owner</th>
                                                 <th class="px-4 py-3">Version</th>
                                                 <th class="px-4 py-3">Status</th>
+                                                <th class="px-4 py-3">File</th>
                                             </tr>
                                         </thead>
                                         <tbody id="documents-body" class="divide-y divide-zinc-100"></tbody>
@@ -180,10 +181,43 @@
                                     <input name="title" required placeholder="Title" class="form-input">
                                     <input name="category" required placeholder="Category" class="form-input">
                                     <input name="version_number" required placeholder="Version" class="form-input">
-                                    <input name="file_path" required placeholder="File path" class="form-input">
+                                    <input name="file" type="file" class="form-input">
+                                    <input name="file_path" placeholder="Existing file path" class="form-input">
                                     <select name="owner_id" required class="form-input user-select"></select>
                                     <select name="approver_id" class="form-input user-select"></select>
                                     <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Create</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="grid gap-6 xl:grid-cols-2">
+                            <form id="document-edit-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">Edit Document</h3>
+                                <div class="space-y-3">
+                                    <select id="document-edit-select" name="document_id" required class="form-input"></select>
+                                    <input name="title" required placeholder="Title" class="form-input">
+                                    <input name="category" required placeholder="Category" class="form-input">
+                                    <select name="owner_id" required class="form-input user-select"></select>
+                                    <select name="status" class="form-input">
+                                        <option>Draft</option>
+                                        <option>Under Review</option>
+                                        <option>Approved</option>
+                                        <option>Retired</option>
+                                    </select>
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Save</button>
+                                </div>
+                            </form>
+
+                            <form id="document-version-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">New Version</h3>
+                                <div class="space-y-3">
+                                    <select id="document-version-document-select" name="document_id" required class="form-input"></select>
+                                    <input name="version_number" required placeholder="Version" class="form-input">
+                                    <input name="file" type="file" class="form-input">
+                                    <input name="file_path" placeholder="Existing file path" class="form-input">
+                                    <textarea name="change_summary" placeholder="Change summary" class="form-input min-h-20"></textarea>
+                                    <select name="approver_id" class="form-input user-select"></select>
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Create Version</button>
                                 </div>
                             </form>
                         </div>

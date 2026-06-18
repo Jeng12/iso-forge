@@ -37,6 +37,7 @@ All tenant routes use:
 - `GET /management-review-packets`
 - `GET /management-review-packets/{managementReview}`
 - `GET /management-review-packets/{managementReview}/download`
+- `GET /management-review-packets/{managementReview}/pdf`
 - `GET /audit-logs`
 - `POST /audit-logs`
 
@@ -44,9 +45,18 @@ All tenant routes use:
 
 - `GET /documents`
 - `POST /documents`
+- `PATCH /documents/{document}`
+- `POST /documents/{document}/versions`
+- `GET /documents/{document}/versions/{documentVersion}/download`
 - `GET /document-approvals`
 - `POST /documents/{document}/approvals`
 - `POST /document-approvals/{documentApproval}/approve`
+
+`POST /documents` and `POST /documents/{document}/versions` accept either JSON file references with `file_path`, `mime_type`, and `file_size`, or multipart uploads with a `file` field. The API stores uploaded versions on the local disk and returns `current_version.is_stored` so clients can decide whether the protected download endpoint is available.
+
+Document create/update/version and approval actions are validated through FormRequest classes. Validation failures return Laravel's standard `422` response with an `errors` object keyed by field name.
+
+Management review packet downloads are available as JSON through `/download` and as a generated PDF through `/pdf`.
 
 ### Risk And CAPA
 
@@ -120,5 +130,5 @@ All tenant routes use:
 - `training.view` and `training.manage` control training, competency, and awareness actions.
 - `incident.view` and `incident.manage` control incident response and emergency preparedness actions.
 - `analytics.view` controls trend analytics reads.
-- `review_packet.view` controls management review packet reads and JSON downloads.
+- `review_packet.view` controls management review packet reads, JSON downloads, and PDF downloads.
 - `audit.view` controls audit-ledger reads and manual audit entries.

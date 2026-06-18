@@ -22,7 +22,9 @@ Use this checklist before tagging or deploying a release.
 - [ ] Login works with a real tenant user.
 - [ ] Tenant snapshot endpoint returns metrics.
 - [ ] Analytics dashboard returns incident, CAPA, training, and supplier-risk trend data.
-- [ ] Management review packet preview and JSON download work for a `review_packet.view` user.
+- [ ] Management review packet preview, JSON download, and PDF download work for a `review_packet.view` user.
+- [ ] Controlled document creation accepts an uploaded file and the stored current version downloads successfully.
+- [ ] Controlled document edit and new-version forms show validation summaries for missing required fields.
 - [ ] Document approval creates an electronic signature.
 - [ ] QMS objective and audit records can be created by a `qms.manage` user.
 - [ ] Supplier quality and calibration records can be created by a `supplier.manage` user.

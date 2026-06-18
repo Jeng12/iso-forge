@@ -73,12 +73,16 @@ if (root) {
         overviewApprovals: document.getElementById('overview-approvals'),
         overviewTasks: document.getElementById('overview-tasks'),
         documentsBody: document.getElementById('documents-body'),
+        documentEditSelect: document.getElementById('document-edit-select'),
+        documentVersionDocumentSelect: document.getElementById('document-version-document-select'),
         approvalList: document.getElementById('approval-list'),
         risksBody: document.getElementById('risks-body'),
         capaList: document.getElementById('capa-list'),
         taskList: document.getElementById('task-list'),
         auditBody: document.getElementById('audit-body'),
         documentForm: document.getElementById('document-form'),
+        documentEditForm: document.getElementById('document-edit-form'),
+        documentVersionForm: document.getElementById('document-version-form'),
         riskForm: document.getElementById('risk-form'),
         objectivesBody: document.getElementById('qms-objectives-body'),
         auditsBody: document.getElementById('qms-audits-body'),
@@ -153,11 +157,20 @@ if (root) {
 
     const tenantPath = (path) => `/api/tenants/${state.tenant.slug}${path}`;
 
+    const removeEmptyFile = (form, key = 'file') => {
+        const file = form.get(key);
+
+        if (file instanceof File && !file.name) {
+            form.delete(key);
+        }
+    };
+
     const api = async (path, options = {}) => {
+        const isFormData = options.body instanceof FormData;
         const headers = {
             Accept: 'application/json',
             ...(state.token ? { Authorization: `Bearer ${state.token}` } : {}),
-            ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+            ...(options.body && !isFormData ? { 'Content-Type': 'application/json' } : {}),
             ...(options.headers ?? {}),
         };
 
@@ -165,7 +178,8 @@ if (root) {
         const payload = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-            const message = payload.message || Object.values(payload.errors ?? {})?.[0]?.[0] || 'Request failed.';
+            const validationMessages = Object.values(payload.errors ?? {}).flat();
+            const message = validationMessages.length ? validationMessages.join('\n') : payload.message || 'Request failed.';
             throw new Error(message);
         }
 
@@ -173,7 +187,10 @@ if (root) {
     };
 
     const showStatus = (message, tone = 'success') => {
-        els.statusLine.textContent = message;
+        const lines = String(message ?? '').split('\n').filter(Boolean);
+        els.statusLine.innerHTML = lines.length > 1
+            ? `<div class="font-semibold">Please fix the following:</div><ul class="mt-2 list-disc space-y-1 pl-5">${lines.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>`
+            : escapeHtml(message);
         els.statusLine.className = `rounded-lg border px-4 py-3 text-sm font-medium ${
             tone === 'error'
                 ? 'border-red-200 bg-red-50 text-red-700'
@@ -266,8 +283,21 @@ if (root) {
                 <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml(document.owner?.name)}</td>
                 <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml(document.current_version?.version_number ?? 'Draft')}</td>
                 <td class="whitespace-nowrap px-4 py-3">${renderStatusBadge(document.status)}</td>
+                <td class="whitespace-nowrap px-4 py-3">
+                    ${document.current_version?.is_stored
+                        ? `<button data-download-document-id="${document.id}" data-download-version-id="${document.current_version.id}" class="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50">Download</button>`
+                        : '<span class="text-sm text-zinc-500">Reference</span>'}
+                </td>
             </tr>
         `).join('');
+
+        const documentOptions = state.documents.map((document) => {
+            return `<option value="${document.id}">${escapeHtml(document.document_number)} - ${escapeHtml(document.title)}</option>`;
+        }).join('');
+
+        els.documentEditSelect.innerHTML = documentOptions;
+        els.documentVersionDocumentSelect.innerHTML = documentOptions;
+        fillDocumentEditForm();
 
         const approvalRows = state.approvals.map((approval) => {
             const document = approval.document_version?.document ?? {};
@@ -291,6 +321,24 @@ if (root) {
 
         els.approvalList.innerHTML = approvalRows || '<div class="p-4 text-sm text-zinc-500">No approvals found.</div>';
         els.overviewApprovals.innerHTML = approvalRows || '<div class="p-4 text-sm text-zinc-500">No approvals found.</div>';
+    };
+
+    const fillDocumentEditForm = () => {
+        if (!els.documentEditForm || !els.documentEditSelect) {
+            return;
+        }
+
+        const document = state.documents.find((item) => String(item.id) === String(els.documentEditSelect.value)) ?? state.documents[0];
+
+        if (!document) {
+            return;
+        }
+
+        els.documentEditSelect.value = document.id;
+        els.documentEditForm.elements.title.value = document.title ?? '';
+        els.documentEditForm.elements.category.value = document.category ?? '';
+        els.documentEditForm.elements.owner_id.value = document.owner_id ?? '';
+        els.documentEditForm.elements.status.value = document.status ?? 'Draft';
     };
 
     const renderRisks = () => {
@@ -761,6 +809,7 @@ if (root) {
                         ${renderStatusBadge(packet.status)}
                         <button data-preview-packet-id="${packet.id}" class="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50">Preview</button>
                         <button data-download-packet-id="${packet.id}" class="rounded-lg bg-zinc-950 px-3 py-2 text-sm font-semibold text-white hover:bg-zinc-800">Download</button>
+                        <button data-pdf-packet-id="${packet.id}" class="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50">PDF</button>
                     </div>
                 </div>
             </div>
@@ -1066,24 +1115,82 @@ if (root) {
         event.preventDefault();
         const form = new FormData(els.documentForm);
         const approverId = form.get('approver_id');
+        form.delete('approver_id');
+        removeEmptyFile(form);
+
+        if (approverId) {
+            form.append('approver_ids[]', approverId);
+        }
 
         try {
             await api(tenantPath('/documents'), {
                 method: 'POST',
-                body: JSON.stringify({
-                    document_number: form.get('document_number'),
-                    title: form.get('title'),
-                    category: form.get('category'),
-                    owner_id: Number(form.get('owner_id')),
-                    version_number: form.get('version_number'),
-                    file_path: form.get('file_path'),
-                    mime_type: 'application/pdf',
-                    approver_ids: approverId ? [Number(approverId)] : [],
-                }),
+                body: form,
             });
             els.documentForm.reset();
             await loadWorkspace();
             showStatus('Document created.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.documentEditSelect.addEventListener('change', fillDocumentEditForm);
+
+    els.documentEditForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const documentId = els.documentEditSelect.value;
+        const form = new FormData(els.documentEditForm);
+
+        if (!documentId) {
+            showStatus('Select a document to edit.', 'error');
+            return;
+        }
+
+        try {
+            await api(tenantPath(`/documents/${documentId}`), {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    title: form.get('title'),
+                    category: form.get('category'),
+                    owner_id: Number(form.get('owner_id')),
+                    status: form.get('status'),
+                }),
+            });
+            await loadWorkspace();
+            showStatus('Document updated.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.documentVersionForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.documentVersionForm);
+        const documentId = form.get('document_id');
+        const approverId = form.get('approver_id');
+
+        form.delete('document_id');
+        form.delete('approver_id');
+        removeEmptyFile(form);
+
+        if (approverId) {
+            form.append('approver_ids[]', approverId);
+        }
+
+        if (!documentId) {
+            showStatus('Select a document before creating a version.', 'error');
+            return;
+        }
+
+        try {
+            await api(tenantPath(`/documents/${documentId}/versions`), {
+                method: 'POST',
+                body: form,
+            });
+            els.documentVersionForm.reset();
+            await loadWorkspace();
+            showStatus('Document version created.');
         } catch (error) {
             showStatus(error.message, 'error');
         }
@@ -1651,8 +1758,10 @@ if (root) {
     document.addEventListener('click', async (event) => {
         const approveButton = event.target.closest('[data-approve-id]');
         const completeButton = event.target.closest('[data-complete-task-id]');
+        const downloadDocumentButton = event.target.closest('[data-download-document-id]');
         const previewPacketButton = event.target.closest('[data-preview-packet-id]');
         const downloadPacketButton = event.target.closest('[data-download-packet-id]');
+        const pdfPacketButton = event.target.closest('[data-pdf-packet-id]');
 
         if (approveButton) {
             try {
@@ -1675,6 +1784,35 @@ if (root) {
                 });
                 await loadWorkspace();
                 showStatus('Workflow task completed.');
+            } catch (error) {
+                showStatus(error.message, 'error');
+            }
+        }
+
+        if (downloadDocumentButton) {
+            try {
+                const response = await fetch(tenantPath(`/documents/${downloadDocumentButton.dataset.downloadDocumentId}/versions/${downloadDocumentButton.dataset.downloadVersionId}/download`), {
+                    headers: {
+                        Accept: 'application/octet-stream',
+                        Authorization: `Bearer ${state.token}`,
+                    },
+                });
+
+                if (!response.ok) {
+                    const payload = await response.json().catch(() => ({}));
+                    throw new Error(payload.message || 'Document download failed.');
+                }
+
+                const blob = await response.blob();
+                const disposition = response.headers.get('Content-Disposition') ?? '';
+                const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? 'controlled-document';
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                link.click();
+                URL.revokeObjectURL(url);
+                showStatus('Document downloaded.');
             } catch (error) {
                 showStatus(error.message, 'error');
             }
@@ -1715,6 +1853,35 @@ if (root) {
                 link.click();
                 URL.revokeObjectURL(url);
                 showStatus('Packet downloaded.');
+            } catch (error) {
+                showStatus(error.message, 'error');
+            }
+        }
+
+        if (pdfPacketButton) {
+            try {
+                const response = await fetch(tenantPath(`/management-review-packets/${pdfPacketButton.dataset.pdfPacketId}/pdf`), {
+                    headers: {
+                        Accept: 'application/pdf',
+                        Authorization: `Bearer ${state.token}`,
+                    },
+                });
+
+                if (!response.ok) {
+                    const payload = await response.json().catch(() => ({}));
+                    throw new Error(payload.message || 'PDF download failed.');
+                }
+
+                const blob = await response.blob();
+                const disposition = response.headers.get('Content-Disposition') ?? '';
+                const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? 'management-review-packet.pdf';
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                link.click();
+                URL.revokeObjectURL(url);
+                showStatus('Packet PDF downloaded.');
             } catch (error) {
                 showStatus(error.message, 'error');
             }

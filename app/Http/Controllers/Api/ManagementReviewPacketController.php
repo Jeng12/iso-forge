@@ -21,6 +21,7 @@ use App\Models\TrainingProgram;
 use App\Models\TrainingRecord;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 
 class ManagementReviewPacketController extends Controller
 {
@@ -70,6 +71,19 @@ class ManagementReviewPacketController extends Controller
             ->withHeaders([
                 'Content-Disposition' => 'attachment; filename="'.$filename.'"',
             ]);
+    }
+
+    public function pdf(Tenant $tenant, ManagementReview $managementReview): Response
+    {
+        abort_unless((int) $managementReview->tenant_id === (int) $tenant->id, 404);
+
+        $packet = $this->buildPacket($tenant, $managementReview);
+        $filename = (string) str($packet['packet_id'])->lower()->replace([' ', '/'], '-')->append('.pdf');
+
+        return response($this->renderPacketPdf($packet), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
     }
 
     private function buildPacket(Tenant $tenant, ManagementReview $review): array
@@ -262,5 +276,80 @@ class ManagementReviewPacketController extends Controller
     private function packetId(Tenant $tenant, ManagementReview $review): string
     {
         return 'MRP-'.str($tenant->slug)->upper().'-'.str_pad((string) $review->id, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function renderPacketPdf(array $packet): string
+    {
+        $summary = $packet['evidence_summary'];
+        $lines = [
+            'ISO-Forge Management Review Packet',
+            'Packet ID: '.$packet['packet_id'],
+            'Tenant: '.$packet['tenant']['name'].' ('.$packet['tenant']['slug'].')',
+            'Review: '.$packet['management_review']['title'],
+            'Review date: '.($packet['management_review']['review_date'] ?? '-'),
+            'Status: '.$packet['management_review']['status'],
+            'Packet hash: '.$packet['packet_hash'],
+            'QMS: '.$summary['qms']['objectives'].' objectives, '.$summary['qms']['audits'].' audits, '.$summary['qms']['open_findings'].' open findings',
+            'Training: '.$summary['training']['programs'].' programs, '.$summary['training']['assignments'].' assignments, '.$summary['training']['records'].' records',
+            'Incident response: '.$summary['incident_response']['reports'].' reports, '.$summary['incident_response']['open_reports'].' open, '.$summary['incident_response']['emergency_drills'].' drills',
+            'Supplier quality: '.$summary['supplier_quality']['suppliers'].' suppliers, '.$summary['supplier_quality']['evaluations'].' evaluations, '.$summary['supplier_quality']['certificates'].' certificates',
+            'CAPA: '.$summary['capa']['open_actions'].' open actions',
+            'Audit chain: '.$summary['audit_chain']['events'].' events',
+            'Latest audit hash: '.$summary['audit_chain']['latest_hash'],
+            'Generated at: '.$packet['generated_at'],
+        ];
+
+        $stream = "BT\n/F1 10 Tf\n50 760 Td\n";
+
+        foreach ($lines as $index => $line) {
+            if ($index > 0) {
+                $stream .= "0 -18 Td\n";
+            }
+
+            $stream .= '('.$this->escapePdfText($line).") Tj\n";
+        }
+
+        $stream .= "ET\n";
+
+        return $this->buildPdfDocument($stream);
+    }
+
+    private function buildPdfDocument(string $stream): string
+    {
+        $objects = [
+            "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
+            "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n",
+            "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n",
+            "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
+            "5 0 obj\n<< /Length ".strlen($stream)." >>\nstream\n".$stream."endstream\nendobj\n",
+        ];
+
+        $pdf = "%PDF-1.4\n";
+        $offsets = [0];
+
+        foreach ($objects as $object) {
+            $offsets[] = strlen($pdf);
+            $pdf .= $object;
+        }
+
+        $xrefOffset = strlen($pdf);
+        $pdf .= "xref\n0 ".(count($objects) + 1)."\n";
+        $pdf .= "0000000000 65535 f \n";
+
+        foreach (array_slice($offsets, 1) as $offset) {
+            $pdf .= str_pad((string) $offset, 10, '0', STR_PAD_LEFT)." 00000 n \n";
+        }
+
+        $pdf .= "trailer\n<< /Size ".(count($objects) + 1)." /Root 1 0 R >>\n";
+        $pdf .= "startxref\n".$xrefOffset."\n%%EOF\n";
+
+        return $pdf;
+    }
+
+    private function escapePdfText(string $line): string
+    {
+        $line = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $line) ?: $line;
+
+        return str_replace(['\\', '(', ')', "\r", "\n"], ['\\\\', '\\(', '\\)', ' ', ' '], $line);
     }
 }

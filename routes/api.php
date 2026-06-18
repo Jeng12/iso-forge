@@ -35,9 +35,13 @@ Route::middleware('auth:sanctum')->group(function (): void {
             Route::get('/management-review-packets', [ManagementReviewPacketController::class, 'index'])->middleware('permission:review_packet.view');
             Route::get('/management-review-packets/{managementReview}', [ManagementReviewPacketController::class, 'show'])->middleware('permission:review_packet.view');
             Route::get('/management-review-packets/{managementReview}/download', [ManagementReviewPacketController::class, 'download'])->middleware('permission:review_packet.view');
+            Route::get('/management-review-packets/{managementReview}/pdf', [ManagementReviewPacketController::class, 'pdf'])->middleware('permission:review_packet.view');
 
             Route::get('/documents', [DocumentController::class, 'index'])->middleware('permission:document.view');
             Route::post('/documents', [DocumentController::class, 'store'])->middleware('permission:document.create');
+            Route::patch('/documents/{document}', [DocumentController::class, 'update'])->middleware('permission:document.create');
+            Route::post('/documents/{document}/versions', [DocumentController::class, 'storeVersion'])->middleware('permission:document.create');
+            Route::get('/documents/{document}/versions/{documentVersion}/download', [DocumentController::class, 'downloadVersion'])->middleware('permission:document.view');
             Route::post('/documents/{document}/approvals', [DocumentController::class, 'requestApprovals'])->middleware('permission:document.create');
             Route::get('/document-approvals', [DocumentController::class, 'approvals'])->middleware('permission:document.view');
             Route::post('/document-approvals/{documentApproval}/approve', [DocumentController::class, 'approve'])->middleware('permission:document.approve');

@@ -3,6 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ApproveDocumentRequest;
+use App\Http\Requests\RequestDocumentApprovalRequest;
+use App\Http\Requests\StoreDocumentRequest;
+use App\Http\Requests\StoreDocumentVersionRequest;
+use App\Http\Requests\UpdateDocumentRequest;
+use App\Http\Resources\DocumentResource;
 use App\Models\AuditLog;
 use App\Models\Document;
 use App\Models\DocumentApproval;
@@ -10,9 +16,11 @@ use App\Models\DocumentVersion;
 use App\Models\ElectronicSignature;
 use App\Models\Tenant;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DocumentController extends Controller
 {
@@ -30,36 +38,28 @@ class DocumentController extends Controller
     public function index(Tenant $tenant): JsonResponse
     {
         return response()->json([
-            'data' => Document::query()
-                ->with(['owner:id,name,email', 'currentVersion', 'versions.approvals.approver:id,name,email'])
-                ->where('tenant_id', $tenant->id)
-                ->latest()
-                ->get(),
+            'data' => DocumentResource::collection(
+                Document::query()
+                    ->with(['owner:id,name,email,job_title', 'currentVersion.approvals.approver:id,name,email,job_title', 'versions.approvals.approver:id,name,email,job_title'])
+                    ->where('tenant_id', $tenant->id)
+                    ->latest()
+                    ->get()
+            ),
         ]);
     }
 
-    public function store(Request $request, Tenant $tenant): JsonResponse
+    public function store(StoreDocumentRequest $request, Tenant $tenant): JsonResponse
     {
-        $data = $request->validate([
-            'document_number' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('documents')->where('tenant_id', $tenant->id),
-            ],
-            'title' => ['required', 'string', 'max:255'],
-            'category' => ['required', 'string', 'max:255'],
-            'owner_id' => ['required', Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
-            'version_number' => ['required', 'string', 'max:50'],
-            'file_path' => ['required', 'string', 'max:255'],
-            'mime_type' => ['nullable', 'string', 'max:255'],
-            'file_size' => ['nullable', 'integer', 'min:0'],
-            'change_summary' => ['nullable', 'string'],
-            'approver_ids' => ['nullable', 'array'],
-            'approver_ids.*' => [Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
-        ]);
+        $data = $request->validated();
+        $fileData = $this->versionFileData(
+            $tenant,
+            $data['document_number'],
+            $data['version_number'],
+            $request->file('file'),
+            $data,
+        );
 
-        $document = DB::transaction(function () use ($data, $request, $tenant): Document {
+        $document = DB::transaction(function () use ($data, $fileData, $request, $tenant): Document {
             $document = Document::create([
                 'tenant_id' => $tenant->id,
                 'document_number' => $data['document_number'],
@@ -72,9 +72,9 @@ class DocumentController extends Controller
             $version = DocumentVersion::create([
                 'document_id' => $document->id,
                 'version_number' => $data['version_number'],
-                'file_path' => $data['file_path'],
-                'mime_type' => $data['mime_type'] ?? null,
-                'file_size' => $data['file_size'] ?? null,
+                'file_path' => $fileData['file_path'],
+                'mime_type' => $fileData['mime_type'],
+                'file_size' => $fileData['file_size'],
                 'status' => 'Draft',
                 'change_summary' => $data['change_summary'] ?? null,
             ]);
@@ -105,17 +105,110 @@ class DocumentController extends Controller
         });
 
         return response()->json([
-            'data' => $document->load(['owner:id,name,email', 'currentVersion.approvals.approver:id,name,email']),
+            'data' => new DocumentResource($document->load(['owner:id,name,email,job_title', 'currentVersion.approvals.approver:id,name,email,job_title', 'versions.approvals.approver:id,name,email,job_title'])),
         ], 201);
     }
 
-    public function approve(Request $request, Tenant $tenant, DocumentApproval $documentApproval): JsonResponse
+    public function update(UpdateDocumentRequest $request, Tenant $tenant, Document $document): JsonResponse
     {
-        $data = $request->validate([
-            'comments' => ['nullable', 'string'],
-            'effective_date' => ['nullable', 'date'],
-            'reason' => ['nullable', 'string', 'max:255'],
+        abort_unless((int) $document->tenant_id === (int) $tenant->id, 404);
+
+        $data = $request->validated();
+        $oldValues = $document->toArray();
+
+        $document->update($data);
+
+        AuditLog::appendFor(
+            $tenant->id,
+            $request->user()->id,
+            'document.updated',
+            Document::class,
+            $document->id,
+            $oldValues,
+            $document->fresh(['currentVersion', 'owner'])->toArray(),
+            $request->ip(),
+            $request->userAgent(),
+        );
+
+        return response()->json([
+            'data' => new DocumentResource($document->fresh(['owner:id,name,email,job_title', 'currentVersion.approvals.approver:id,name,email,job_title', 'versions.approvals.approver:id,name,email,job_title'])),
         ]);
+    }
+
+    public function storeVersion(StoreDocumentVersionRequest $request, Tenant $tenant, Document $document): JsonResponse
+    {
+        abort_unless((int) $document->tenant_id === (int) $tenant->id, 404);
+
+        $data = $request->validated();
+        $fileData = $this->versionFileData(
+            $tenant,
+            $document->document_number,
+            $data['version_number'],
+            $request->file('file'),
+            $data,
+        );
+
+        $document = DB::transaction(function () use ($data, $document, $fileData, $request, $tenant): Document {
+            $version = DocumentVersion::create([
+                'document_id' => $document->id,
+                'version_number' => $data['version_number'],
+                'file_path' => $fileData['file_path'],
+                'mime_type' => $fileData['mime_type'],
+                'file_size' => $fileData['file_size'],
+                'status' => 'Draft',
+                'change_summary' => $data['change_summary'] ?? null,
+            ]);
+
+            $oldValues = $document->toArray();
+            $document->update([
+                'current_version_id' => $version->id,
+                'status' => 'Draft',
+            ]);
+
+            foreach ($data['approver_ids'] ?? [] as $approverId) {
+                DocumentApproval::create([
+                    'document_version_id' => $version->id,
+                    'approver_id' => $approverId,
+                    'status' => 'Pending',
+                ]);
+            }
+
+            AuditLog::appendFor(
+                $tenant->id,
+                $request->user()->id,
+                'document.version_created',
+                DocumentVersion::class,
+                $version->id,
+                $oldValues,
+                $document->fresh(['currentVersion', 'owner'])->toArray(),
+                $request->ip(),
+                $request->userAgent(),
+            );
+
+            return $document;
+        });
+
+        return response()->json([
+            'data' => new DocumentResource($document->load(['owner:id,name,email,job_title', 'currentVersion.approvals.approver:id,name,email,job_title', 'versions.approvals.approver:id,name,email,job_title'])),
+        ], 201);
+    }
+
+    public function downloadVersion(Tenant $tenant, Document $document, DocumentVersion $documentVersion): StreamedResponse
+    {
+        abort_unless((int) $document->tenant_id === (int) $tenant->id, 404);
+        abort_unless((int) $documentVersion->document_id === (int) $document->id, 404);
+        abort_unless(Storage::disk('local')->exists($documentVersion->file_path), 404, 'Stored file not found.');
+
+        return Storage::disk('local')->download(
+            $documentVersion->file_path,
+            basename($documentVersion->file_path),
+            ['Content-Type' => $documentVersion->mime_type ?? 'application/octet-stream'],
+        );
+    }
+
+    public function approve(ApproveDocumentRequest $request, Tenant $tenant, DocumentApproval $documentApproval): JsonResponse
+    {
+        $data = $request->validated();
 
         $documentApproval->load('documentVersion.document');
         $document = $documentApproval->documentVersion->document;
@@ -183,14 +276,11 @@ class DocumentController extends Controller
         ]);
     }
 
-    public function requestApprovals(Request $request, Tenant $tenant, Document $document): JsonResponse
+    public function requestApprovals(RequestDocumentApprovalRequest $request, Tenant $tenant, Document $document): JsonResponse
     {
         abort_unless((int) $document->tenant_id === (int) $tenant->id, 404);
 
-        $data = $request->validate([
-            'approver_ids' => ['required', 'array', 'min:1'],
-            'approver_ids.*' => [Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
-        ]);
+        $data = $request->validated();
 
         $version = $document->currentVersion;
         abort_unless($version, 422, 'Document has no current version.');
@@ -222,5 +312,40 @@ class DocumentController extends Controller
         return response()->json([
             'data' => $document->fresh(['currentVersion.approvals.approver:id,name,email']),
         ]);
+    }
+
+    private function versionFileData(Tenant $tenant, string $documentNumber, string $versionNumber, ?UploadedFile $file, array $data): array
+    {
+        if ($file) {
+            return [
+                'file_path' => $this->storeUploadedVersion($tenant, $documentNumber, $versionNumber, $file),
+                'mime_type' => $file->getMimeType(),
+                'file_size' => $file->getSize(),
+            ];
+        }
+
+        return [
+            'file_path' => $data['file_path'],
+            'mime_type' => $data['mime_type'] ?? null,
+            'file_size' => $data['file_size'] ?? null,
+        ];
+    }
+
+    private function storeUploadedVersion(Tenant $tenant, string $documentNumber, string $versionNumber, UploadedFile $file): string
+    {
+        $directory = 'documents/'.$tenant->slug;
+        $extension = $file->getClientOriginalExtension() ?: $file->guessExtension() ?: 'bin';
+        $baseName = (string) Str::of($documentNumber.'-'.$versionNumber)
+            ->replace(['.', '_'], '-')
+            ->slug('-');
+        $filename = $baseName.'.'.$extension;
+        $counter = 2;
+
+        while (Storage::disk('local')->exists($directory.'/'.$filename)) {
+            $filename = $baseName.'-'.$counter.'.'.$extension;
+            $counter++;
+        }
+
+        return $file->storeAs($directory, $filename, 'local');
     }
 }
