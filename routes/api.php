@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CorrectiveActionController;
 use App\Http\Controllers\Api\DocumentController;
+use App\Http\Controllers\Api\FsmsController;
 use App\Http\Controllers\Api\IsoForgeController;
 use App\Http\Controllers\Api\QmsController;
 use App\Http\Controllers\Api\RiskController;
@@ -50,6 +51,15 @@ Route::middleware('auth:sanctum')->group(function (): void {
             Route::patch('/qms/audits/{audit}', [QmsController::class, 'updateAudit'])->middleware('permission:qms.manage');
             Route::post('/qms/audits/{audit}/findings', [QmsController::class, 'storeFinding'])->middleware('permission:qms.manage');
             Route::post('/qms/management-reviews', [QmsController::class, 'storeManagementReview'])->middleware('permission:qms.manage');
+
+            Route::get('/fsms', [FsmsController::class, 'overview'])->middleware('permission:fsms.view,fsms.manage');
+            Route::post('/fsms/haccp-plans', [FsmsController::class, 'storePlan'])->middleware('permission:fsms.manage');
+            Route::post('/fsms/haccp-plans/{haccpPlan}/steps', [FsmsController::class, 'storeStep'])->middleware('permission:fsms.manage');
+            Route::post('/fsms/process-steps/{processStep}/hazards', [FsmsController::class, 'storeHazard'])->middleware('permission:fsms.manage');
+            Route::post('/fsms/hazards/{hazardAnalysis}/ccps', [FsmsController::class, 'storeCcp'])->middleware('permission:fsms.manage');
+            Route::post('/fsms/hazards/{hazardAnalysis}/oprps', [FsmsController::class, 'storeOprp'])->middleware('permission:fsms.manage');
+            Route::post('/fsms/prps', [FsmsController::class, 'storePrp'])->middleware('permission:fsms.manage');
+            Route::post('/fsms/monitoring-records', [FsmsController::class, 'storeMonitoringRecord'])->middleware('permission:fsms.manage');
 
             Route::get('/audit-logs', [IsoForgeController::class, 'auditLogs'])->middleware('permission:audit.view');
             Route::post('/audit-logs', [IsoForgeController::class, 'storeAuditLog'])->middleware('permission:audit.view');

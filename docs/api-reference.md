@@ -66,6 +66,17 @@ All tenant routes use:
 - `POST /qms/audits/{audit}/findings`
 - `POST /qms/management-reviews`
 
+### ISO 22000 FSMS
+
+- `GET /fsms`
+- `POST /fsms/haccp-plans`
+- `POST /fsms/haccp-plans/{haccpPlan}/steps`
+- `POST /fsms/process-steps/{processStep}/hazards`
+- `POST /fsms/hazards/{hazardAnalysis}/ccps`
+- `POST /fsms/hazards/{hazardAnalysis}/oprps`
+- `POST /fsms/prps`
+- `POST /fsms/monitoring-records`
+
 ## Authorization
 
 - Tenant middleware rejects cross-tenant access.
@@ -73,4 +84,5 @@ All tenant routes use:
 - `risk.manage` controls risk register actions.
 - `capa.create` and `capa.close` control CAPA actions.
 - `qms.view` and `qms.manage` control ISO 9001 module actions.
+- `fsms.view` and `fsms.manage` control ISO 22000 module actions.
 - `audit.view` controls audit-ledger reads and manual audit entries.

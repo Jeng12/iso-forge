@@ -1,6 +1,6 @@
 # ISO-Forge
 
-ISO-Forge is a Laravel prototype for a developer-centric ISO compliance framework. The current build follows the local project documents: multi-tenant data isolation, RBAC, document control, workflow tasks, ISO 9001 risk/CAPA records, electronic signatures, and a hash-chained audit ledger.
+ISO-Forge is a Laravel prototype for a developer-centric ISO compliance framework. The current build follows the local project documents: multi-tenant data isolation, RBAC, document control, workflow tasks, ISO 9001 risk/CAPA records, ISO 22000 HACCP controls, electronic signatures, and a hash-chained audit ledger.
 
 ## Stack
 
@@ -37,6 +37,7 @@ Tenant: angkor-quality-foods
 - Document metadata, version history, approval queue, and electronic signature records
 - Generic workflow definitions, instances, and user tasks
 - ISO 9001 risk register, nonconformance records, and corrective actions
+- ISO 22000 HACCP plans, hazard analysis, CCP/OPRP controls, PRPs, and monitoring records
 - SHA-256 audit log chaining with `previous_hash`, `payload_hash`, and `entry_hash`
 - Dashboard for documents, approvals, risks, CAPA, tasks, and audit ledger
 - Sanctum-protected API routes with tenant access checks
@@ -83,6 +84,16 @@ Tenant: angkor-quality-foods
 - API reference in `docs/api-reference.md`
 - Release checklist in `docs/release-checklist.md`
 
+## Phase 7 ISO 22000 FSMS
+
+- HACCP plans with process steps and hazard analysis records
+- Automatic food-safety risk scoring from likelihood and severity
+- CCP and OPRP controls with monitoring frequencies and responsible users
+- Prerequisite programs for sanitation, supplier, and facility controls
+- Monitoring records for CCP/OPRP checks, with deviation records opening CAPA automatically
+- FSMS browser tab for HACCP plans, CCPs, hazard analysis, PRPs, and monitoring records
+- FSMS API actions protected by `fsms.view` and `fsms.manage` permissions
+
 ## API
 
 Authenticate:
@@ -125,6 +136,14 @@ Available tenant routes:
 - `PATCH /api/tenants/{tenant:slug}/qms/audits/{audit}`
 - `POST /api/tenants/{tenant:slug}/qms/audits/{audit}/findings`
 - `POST /api/tenants/{tenant:slug}/qms/management-reviews`
+- `GET /api/tenants/{tenant:slug}/fsms`
+- `POST /api/tenants/{tenant:slug}/fsms/haccp-plans`
+- `POST /api/tenants/{tenant:slug}/fsms/haccp-plans/{haccpPlan}/steps`
+- `POST /api/tenants/{tenant:slug}/fsms/process-steps/{processStep}/hazards`
+- `POST /api/tenants/{tenant:slug}/fsms/hazards/{hazardAnalysis}/ccps`
+- `POST /api/tenants/{tenant:slug}/fsms/hazards/{hazardAnalysis}/oprps`
+- `POST /api/tenants/{tenant:slug}/fsms/prps`
+- `POST /api/tenants/{tenant:slug}/fsms/monitoring-records`
 - `GET /api/tenants/{tenant:slug}/audit-logs`
 - `POST /api/tenants/{tenant:slug}/audit-logs`
 
@@ -137,7 +156,7 @@ npm audit
 npm run build
 ```
 
-Current status: 20 tests passing and npm audit clean.
+Current status: 24 tests passing and npm audit clean.
 
 ## Verification Command
 
@@ -148,7 +167,7 @@ php artisan iso-forge:verify-audit-chain
 Expected result:
 
 ```text
-Audit chain valid. Checked 8 entries; legacy entries: 0.
+Audit chain valid. Checked 12 entries; legacy entries: 0.
 ```
 
 ## Next Development Targets
@@ -156,4 +175,4 @@ Audit chain valid. Checked 8 entries; legacy entries: 0.
 - Add file upload/storage for controlled document versions
 - Add request classes/resources for stricter API contracts
 - Add edit screens and validation summaries for Phase 3 forms
-- Expand ISO 22000 HACCP, CCP, OPRP, and monitoring-record modules
+- Add supplier approval and calibration modules linked to ISO 22000/9001 evidence

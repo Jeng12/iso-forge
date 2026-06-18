@@ -49,6 +49,7 @@
                     <button data-tab="documents" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">Documents</button>
                     <button data-tab="risks" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">Risks</button>
                     <button data-tab="qms" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">QMS</button>
+                    <button data-tab="fsms" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">FSMS</button>
                     <button data-tab="capa" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">CAPA</button>
                     <button data-tab="audit" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">Audit</button>
                 </nav>
@@ -306,6 +307,105 @@
                                 <div id="qms-reviews-list" class="divide-y divide-zinc-100"></div>
                             </section>
                         </div>
+                    </section>
+
+                    <section data-panel="fsms" class="panel hidden space-y-6">
+                        <div class="grid gap-6 xl:grid-cols-[1fr_360px]">
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">HACCP Plans</h3>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-zinc-200 text-left text-sm">
+                                        <thead class="bg-zinc-50 text-xs font-semibold uppercase tracking-normal text-zinc-500">
+                                            <tr>
+                                                <th class="px-4 py-3">Plan</th>
+                                                <th class="px-4 py-3">Owner</th>
+                                                <th class="px-4 py-3">Steps</th>
+                                                <th class="px-4 py-3">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="fsms-plans-body" class="divide-y divide-zinc-100"></tbody>
+                                    </table>
+                                </div>
+                            </section>
+
+                            <form id="haccp-plan-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">New HACCP Plan</h3>
+                                <div class="space-y-3">
+                                    <input name="name" required placeholder="Plan name" class="form-input">
+                                    <input name="product" required placeholder="Product" class="form-input">
+                                    <textarea name="scope" required placeholder="Scope" class="form-input min-h-24"></textarea>
+                                    <select name="owner_id" class="form-input user-select"></select>
+                                    <input name="effective_date" type="date" class="form-input">
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Create</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="grid gap-6 xl:grid-cols-[1fr_360px]">
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Critical Control Points</h3>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-zinc-200 text-left text-sm">
+                                        <thead class="bg-zinc-50 text-xs font-semibold uppercase tracking-normal text-zinc-500">
+                                            <tr>
+                                                <th class="px-4 py-3">CCP</th>
+                                                <th class="px-4 py-3">Limit</th>
+                                                <th class="px-4 py-3">Frequency</th>
+                                                <th class="px-4 py-3">Responsible</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="fsms-ccps-body" class="divide-y divide-zinc-100"></tbody>
+                                    </table>
+                                </div>
+                            </section>
+
+                            <form id="monitoring-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">New Monitoring Record</h3>
+                                <div class="space-y-3">
+                                    <select id="fsms-monitorable-select" name="monitorable_id" required class="form-input"></select>
+                                    <select name="recorded_by_id" class="form-input user-select"></select>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input name="measured_value" type="number" step="0.01" placeholder="Value" class="form-input">
+                                        <input name="unit" placeholder="Unit" value="C" class="form-input">
+                                    </div>
+                                    <input name="result" required placeholder="Result" value="Pass" class="form-input">
+                                    <input name="observed_at" type="datetime-local" class="form-input">
+                                    <label class="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-700">
+                                        <input name="is_deviation" type="checkbox" class="size-4 rounded border-zinc-300 text-emerald-700 focus:ring-emerald-600">
+                                        Deviation
+                                    </label>
+                                    <textarea name="notes" placeholder="Notes" class="form-input min-h-20"></textarea>
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Record</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="grid gap-6 xl:grid-cols-2">
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Hazard Analysis</h3>
+                                </div>
+                                <div id="fsms-hazards-list" class="divide-y divide-zinc-100"></div>
+                            </section>
+
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Monitoring Records</h3>
+                                </div>
+                                <div id="fsms-monitoring-list" class="divide-y divide-zinc-100"></div>
+                            </section>
+                        </div>
+
+                        <section class="rounded-lg border border-zinc-200 bg-white">
+                            <div class="border-b border-zinc-200 px-4 py-3">
+                                <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Prerequisite Programs</h3>
+                            </div>
+                            <div id="fsms-prps-list" class="divide-y divide-zinc-100"></div>
+                        </section>
                     </section>
 
                     <section data-panel="audit" class="panel hidden">

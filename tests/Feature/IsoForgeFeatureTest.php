@@ -40,6 +40,8 @@ class IsoForgeFeatureTest extends TestCase
             ->assertSee('Compliance workspace')
             ->assertSee('New Document')
             ->assertSee('New Objective')
+            ->assertSee('New HACCP Plan')
+            ->assertSee('New Monitoring Record')
             ->assertSee('New CAPA');
     }
 

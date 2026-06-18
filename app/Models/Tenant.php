@@ -64,6 +64,36 @@ class Tenant extends Model
         return $this->hasMany(ManagementReview::class);
     }
 
+    public function haccpPlans(): HasMany
+    {
+        return $this->hasMany(HaccpPlan::class);
+    }
+
+    public function hazardAnalyses(): HasMany
+    {
+        return $this->hasMany(HazardAnalysis::class);
+    }
+
+    public function criticalControlPoints(): HasMany
+    {
+        return $this->hasMany(CriticalControlPoint::class);
+    }
+
+    public function operationalPrerequisitePrograms(): HasMany
+    {
+        return $this->hasMany(OperationalPrerequisiteProgram::class);
+    }
+
+    public function prerequisitePrograms(): HasMany
+    {
+        return $this->hasMany(PrerequisiteProgram::class);
+    }
+
+    public function monitoringRecords(): HasMany
+    {
+        return $this->hasMany(MonitoringRecord::class);
+    }
+
     public function correctiveActions(): HasMany
     {
         return $this->hasMany(CorrectiveAction::class);

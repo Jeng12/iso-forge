@@ -16,6 +16,14 @@ if (root) {
             findings: [],
             management_reviews: [],
         },
+        fsms: {
+            haccp_plans: [],
+            hazards: [],
+            ccps: [],
+            oprps: [],
+            prps: [],
+            monitoring_records: [],
+        },
         correctiveActions: [],
         tasks: [],
         auditLogs: [],
@@ -44,8 +52,16 @@ if (root) {
         auditsBody: document.getElementById('qms-audits-body'),
         findingsList: document.getElementById('qms-findings-list'),
         reviewsList: document.getElementById('qms-reviews-list'),
+        fsmsPlansBody: document.getElementById('fsms-plans-body'),
+        fsmsCcpsBody: document.getElementById('fsms-ccps-body'),
+        fsmsHazardsList: document.getElementById('fsms-hazards-list'),
+        fsmsMonitoringList: document.getElementById('fsms-monitoring-list'),
+        fsmsPrpsList: document.getElementById('fsms-prps-list'),
+        fsmsMonitorableSelect: document.getElementById('fsms-monitorable-select'),
         objectiveForm: document.getElementById('objective-form'),
         auditForm: document.getElementById('audit-form'),
+        haccpPlanForm: document.getElementById('haccp-plan-form'),
+        monitoringForm: document.getElementById('monitoring-form'),
         capaForm: document.getElementById('capa-form'),
     };
 
@@ -106,8 +122,10 @@ if (root) {
     };
 
     const renderStatusBadge = (status) => {
-        const color = status === 'Approved' || status === 'Completed' || status === 'Verified'
+        const color = status === 'Approved' || status === 'Completed' || status === 'Verified' || status === 'Active' || status === 'Pass'
             ? 'bg-emerald-100 text-emerald-800'
+            : status === 'Deviation'
+                ? 'bg-red-100 text-red-800'
             : status === 'Pending' || status === 'Waiting' || status === 'Under Review'
                 ? 'bg-amber-100 text-amber-800'
                 : 'bg-sky-100 text-sky-800';
@@ -135,6 +153,9 @@ if (root) {
             ['QMS Objectives', metrics.quality_objectives ?? 0],
             ['Planned Audits', metrics.planned_audits ?? 0],
             ['Open Findings', metrics.open_findings ?? 0],
+            ['HACCP Plans', metrics.haccp_plans ?? 0],
+            ['Active CCPs', metrics.active_ccps ?? 0],
+            ['FSMS Deviations', metrics.fsms_deviations ?? 0],
             ['Audit Events', metrics.audit_events ?? 0],
         ];
 
@@ -267,6 +288,87 @@ if (root) {
         `).join('') || '<div class="p-4 text-sm text-zinc-500">No management reviews found.</div>';
     };
 
+    const renderFsms = () => {
+        els.fsmsPlansBody.innerHTML = (state.fsms.haccp_plans ?? []).map((plan) => `
+            <tr>
+                <td class="min-w-72 px-4 py-3">
+                    <div class="font-medium">${escapeHtml(plan.name)}</div>
+                    <div class="mt-1 text-xs font-medium text-zinc-500">${escapeHtml(plan.product)}</div>
+                </td>
+                <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml(plan.owner?.name)}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml((plan.process_steps ?? []).length)}</td>
+                <td class="whitespace-nowrap px-4 py-3">${renderStatusBadge(plan.status)}</td>
+            </tr>
+        `).join('');
+
+        const controlOptions = [
+            ...(state.fsms.ccps ?? []).map((ccp) => ({
+                type: 'ccp',
+                id: ccp.id,
+                label: `CCP - ${ccp.name}`,
+            })),
+            ...(state.fsms.oprps ?? []).map((oprp) => ({
+                type: 'oprp',
+                id: oprp.id,
+                label: `OPRP - ${oprp.name}`,
+            })),
+        ];
+
+        els.fsmsMonitorableSelect.innerHTML = controlOptions.map((control) => {
+            return `<option value="${control.type}:${control.id}">${escapeHtml(control.label)}</option>`;
+        }).join('');
+
+        els.fsmsCcpsBody.innerHTML = (state.fsms.ccps ?? []).map((ccp) => `
+            <tr>
+                <td class="min-w-72 px-4 py-3">
+                    <div class="font-medium">${escapeHtml(ccp.name)}</div>
+                    <div class="mt-1 text-xs font-medium text-zinc-500">${escapeHtml(ccp.hazard_analysis?.process_step?.haccp_plan?.name)}</div>
+                </td>
+                <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml(ccp.critical_limit)}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml(ccp.monitoring_frequency)}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml(ccp.responsible_user?.name)}</td>
+            </tr>
+        `).join('');
+
+        els.fsmsHazardsList.innerHTML = (state.fsms.hazards ?? []).map((hazard) => `
+            <div class="p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <div class="font-medium">${escapeHtml(hazard.hazard_type)} - ${escapeHtml(hazard.control_type)}</div>
+                        <div class="mt-1 text-sm text-zinc-600">${escapeHtml(hazard.hazard_description)}</div>
+                        <div class="mt-1 text-xs font-medium text-zinc-500">${escapeHtml(hazard.process_step?.name)} - ${escapeHtml(hazard.process_step?.haccp_plan?.product)}</div>
+                    </div>
+                    ${renderStatusBadge(`Risk ${hazard.risk_score}`)}
+                </div>
+            </div>
+        `).join('') || '<div class="p-4 text-sm text-zinc-500">No hazard analysis found.</div>';
+
+        els.fsmsMonitoringList.innerHTML = (state.fsms.monitoring_records ?? []).map((record) => `
+            <div class="p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <div class="font-medium">${escapeHtml(record.monitorable?.name)} - ${escapeHtml(record.result)}</div>
+                        <div class="mt-1 text-sm text-zinc-600">${escapeHtml(record.measured_value ?? '-')} ${escapeHtml(record.unit ?? '')} - ${escapeHtml(record.recorder?.name)}</div>
+                        <div class="mt-1 text-xs font-medium text-zinc-500">${escapeHtml(record.observed_at)} ${record.corrective_action ? `- ${escapeHtml(record.corrective_action.title)}` : ''}</div>
+                    </div>
+                    ${renderStatusBadge(record.is_deviation ? 'Deviation' : 'Pass')}
+                </div>
+            </div>
+        `).join('') || '<div class="p-4 text-sm text-zinc-500">No monitoring records found.</div>';
+
+        els.fsmsPrpsList.innerHTML = (state.fsms.prps ?? []).map((program) => `
+            <div class="p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <div class="font-medium">${escapeHtml(program.name)}</div>
+                        <div class="mt-1 text-sm text-zinc-600">${escapeHtml(program.category)} - ${escapeHtml(program.verification_frequency)}</div>
+                    </div>
+                    ${renderStatusBadge(program.status)}
+                </div>
+            </div>
+        `).join('') || '<div class="p-4 text-sm text-zinc-500">No prerequisite programs found.</div>';
+    };
+
     const renderTasks = () => {
         const taskRows = state.tasks.map((task) => {
             const canComplete = task.status !== 'Completed'
@@ -312,6 +414,7 @@ if (root) {
         renderDocuments();
         renderRisks();
         renderQms();
+        renderFsms();
         renderCapa();
         renderTasks();
         renderAudit();
@@ -338,6 +441,7 @@ if (root) {
             approvals,
             risks,
             qms,
+            fsms,
             correctiveActions,
             tasks,
             auditLogs,
@@ -348,6 +452,7 @@ if (root) {
             safeFetch(tenantPath('/document-approvals')),
             safeFetch(tenantPath('/risks')),
             safeFetch(tenantPath('/qms'), { objectives: [], audits: [], findings: [], management_reviews: [] }),
+            safeFetch(tenantPath('/fsms'), { haccp_plans: [], hazards: [], ccps: [], oprps: [], prps: [], monitoring_records: [] }),
             safeFetch(tenantPath('/corrective-actions')),
             safeFetch(tenantPath('/workflow-tasks')),
             safeFetch(tenantPath('/audit-logs')),
@@ -359,6 +464,7 @@ if (root) {
         state.approvals = approvals;
         state.risks = risks;
         state.qms = qms;
+        state.fsms = fsms;
         state.correctiveActions = correctiveActions;
         state.tasks = tasks;
         state.auditLogs = auditLogs;
@@ -538,6 +644,67 @@ if (root) {
             els.auditForm.reset();
             await loadWorkspace();
             showStatus('Audit created.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.haccpPlanForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.haccpPlanForm);
+
+        try {
+            await api(tenantPath('/fsms/haccp-plans'), {
+                method: 'POST',
+                body: JSON.stringify({
+                    name: form.get('name'),
+                    product: form.get('product'),
+                    scope: form.get('scope'),
+                    owner_id: Number(form.get('owner_id')),
+                    effective_date: form.get('effective_date') || null,
+                    status: 'Draft',
+                }),
+            });
+            els.haccpPlanForm.reset();
+            await loadWorkspace();
+            showStatus('HACCP plan created.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.monitoringForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.monitoringForm);
+        const [monitorableType, monitorableId] = String(form.get('monitorable_id') ?? '').split(':');
+        const measuredValue = form.get('measured_value');
+        const observedAt = form.get('observed_at')
+            ? new Date(form.get('observed_at')).toISOString()
+            : new Date().toISOString();
+
+        const payload = {
+            monitorable_type: monitorableType,
+            monitorable_id: Number(monitorableId),
+            recorded_by_id: Number(form.get('recorded_by_id')),
+            unit: form.get('unit') || null,
+            result: form.get('result'),
+            is_deviation: form.get('is_deviation') === 'on',
+            observed_at: observedAt,
+            notes: form.get('notes') || null,
+        };
+
+        if (measuredValue !== '') {
+            payload.measured_value = Number(measuredValue);
+        }
+
+        try {
+            await api(tenantPath('/fsms/monitoring-records'), {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            });
+            els.monitoringForm.reset();
+            await loadWorkspace();
+            showStatus(payload.is_deviation ? 'Deviation CAPA opened.' : 'Monitoring record created.');
         } catch (error) {
             showStatus(error.message, 'error');
         }

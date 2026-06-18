@@ -6,13 +6,20 @@ use App\Models\Audit;
 use App\Models\AuditFinding;
 use App\Models\AuditLog;
 use App\Models\CorrectiveAction;
+use App\Models\CriticalControlPoint;
 use App\Models\Document;
 use App\Models\DocumentApproval;
 use App\Models\DocumentVersion;
 use App\Models\ElectronicSignature;
+use App\Models\HaccpPlan;
+use App\Models\HazardAnalysis;
 use App\Models\ManagementReview;
+use App\Models\MonitoringRecord;
 use App\Models\NonConformance;
+use App\Models\OperationalPrerequisiteProgram;
 use App\Models\Permission;
+use App\Models\PrerequisiteProgram;
+use App\Models\ProcessStep;
 use App\Models\QualityObjective;
 use App\Models\Risk;
 use App\Models\Role;
@@ -45,6 +52,8 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Manage risks', 'slug' => 'risk.manage'],
             ['name' => 'View QMS module', 'slug' => 'qms.view'],
             ['name' => 'Manage QMS module', 'slug' => 'qms.manage'],
+            ['name' => 'View FSMS module', 'slug' => 'fsms.view'],
+            ['name' => 'Manage FSMS module', 'slug' => 'fsms.manage'],
         ])->map(fn (array $permission) => Permission::create($permission));
 
         $adminRole = Role::create([
@@ -86,11 +95,14 @@ class DatabaseSeeder extends Seeder
             'risk.manage',
             'qms.view',
             'qms.manage',
+            'fsms.view',
+            'fsms.manage',
         ])->pluck('id'));
         $auditorRole->permissions()->attach($permissions->whereIn('slug', [
             'document.view',
             'audit.view',
             'qms.view',
+            'fsms.view',
         ])->pluck('id'));
         $operatorRole->permissions()->attach($permissions->whereIn('slug', [
             'document.view',
@@ -310,6 +322,100 @@ class DatabaseSeeder extends Seeder
             'status' => 'Planned',
         ]);
 
+        $haccpPlan = HaccpPlan::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Pasteurized Mango Juice HACCP Plan',
+            'product' => 'Mango Juice',
+            'scope' => 'Receiving, preparation, pasteurization, filling, and finished-product release.',
+            'owner_id' => $joto->id,
+            'effective_date' => now()->addDays(10)->toDateString(),
+            'status' => 'Active',
+        ]);
+
+        ProcessStep::create([
+            'tenant_id' => $tenant->id,
+            'haccp_plan_id' => $haccpPlan->id,
+            'sequence' => 1,
+            'name' => 'Raw mango receiving',
+            'description' => 'Approved supplier and incoming fruit inspection before washing.',
+        ]);
+
+        $pasteurizationStep = ProcessStep::create([
+            'tenant_id' => $tenant->id,
+            'haccp_plan_id' => $haccpPlan->id,
+            'sequence' => 4,
+            'name' => 'Pasteurization',
+            'description' => 'Thermal treatment before aseptic filling.',
+        ]);
+
+        $hazard = HazardAnalysis::create([
+            'tenant_id' => $tenant->id,
+            'process_step_id' => $pasteurizationStep->id,
+            'hazard_type' => 'Biological',
+            'hazard_description' => 'Pathogen survival from insufficient heat treatment.',
+            'likelihood' => 3,
+            'severity' => 5,
+            'control_measure' => 'Validate pasteurizer temperature and holding time for every batch.',
+            'control_type' => 'CCP',
+            'status' => 'Assessed',
+        ]);
+
+        $ccp = CriticalControlPoint::create([
+            'tenant_id' => $tenant->id,
+            'hazard_analysis_id' => $hazard->id,
+            'name' => 'Pasteurization temperature',
+            'critical_limit' => '>=72 C for 15 seconds',
+            'monitoring_frequency' => 'Every batch',
+            'responsible_user_id' => $jono->id,
+            'corrective_action_procedure' => 'Hold affected batch, verify pasteurizer calibration, and open CAPA before release.',
+            'status' => 'Active',
+        ]);
+
+        $oprpHazard = HazardAnalysis::create([
+            'tenant_id' => $tenant->id,
+            'process_step_id' => $pasteurizationStep->id,
+            'hazard_type' => 'Physical',
+            'hazard_description' => 'Foreign material from processing equipment.',
+            'likelihood' => 2,
+            'severity' => 4,
+            'control_measure' => 'Metal detection verification after filling.',
+            'control_type' => 'OPRP',
+            'status' => 'Assessed',
+        ]);
+
+        OperationalPrerequisiteProgram::create([
+            'tenant_id' => $tenant->id,
+            'hazard_analysis_id' => $oprpHazard->id,
+            'name' => 'Metal detector challenge test',
+            'control_measure' => 'Challenge test with Fe, non-Fe, and stainless standards.',
+            'monitoring_frequency' => 'Start-up and every two hours',
+            'responsible_user_id' => $joto->id,
+            'status' => 'Active',
+        ]);
+
+        $prp = PrerequisiteProgram::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Sanitation prerequisite program',
+            'category' => 'Sanitation',
+            'description' => 'Pre-operation cleaning verification for juice contact surfaces.',
+            'owner_id' => $joto->id,
+            'verification_frequency' => 'Daily pre-operation inspection',
+            'status' => 'Active',
+        ]);
+
+        $monitoringRecord = MonitoringRecord::create([
+            'tenant_id' => $tenant->id,
+            'monitorable_type' => CriticalControlPoint::class,
+            'monitorable_id' => $ccp->id,
+            'recorded_by_id' => $jono->id,
+            'measured_value' => 73.20,
+            'unit' => 'C',
+            'result' => 'Pass',
+            'is_deviation' => false,
+            'observed_at' => now()->subHours(6),
+            'notes' => 'Batch MJ-260618-01 remained above the validated critical limit.',
+        ]);
+
         $workflow = Workflow::create([
             'tenant_id' => $tenant->id,
             'name' => 'CAPA Workflow',
@@ -393,6 +499,26 @@ class DatabaseSeeder extends Seeder
         AuditLog::appendFor($tenant->id, $jojo->id, 'qms.management_review.created', ManagementReview::class, $review->id, [], [
             'title' => $review->title,
             'review_date' => $review->review_date?->toDateString(),
+        ]);
+
+        AuditLog::appendFor($tenant->id, $joto->id, 'fsms.haccp_plan.created', HaccpPlan::class, $haccpPlan->id, [], [
+            'name' => $haccpPlan->name,
+            'product' => $haccpPlan->product,
+        ]);
+
+        AuditLog::appendFor($tenant->id, $joto->id, 'fsms.hazard.created', HazardAnalysis::class, $hazard->id, [], [
+            'hazard_type' => $hazard->hazard_type,
+            'risk_score' => $hazard->risk_score,
+        ]);
+
+        AuditLog::appendFor($tenant->id, $jono->id, 'fsms.ccp.created', CriticalControlPoint::class, $ccp->id, [], [
+            'name' => $ccp->name,
+            'critical_limit' => $ccp->critical_limit,
+        ]);
+
+        AuditLog::appendFor($tenant->id, $jono->id, 'fsms.monitoring_record.created', MonitoringRecord::class, $monitoringRecord->id, [], [
+            'result' => $monitoringRecord->result,
+            'is_deviation' => $monitoringRecord->is_deviation,
         ]);
     }
 }
