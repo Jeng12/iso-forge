@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\FsmsController;
 use App\Http\Controllers\Api\IncidentResponseController;
 use App\Http\Controllers\Api\IsoForgeController;
+use App\Http\Controllers\Api\ManagementReviewPacketController;
 use App\Http\Controllers\Api\QmsController;
 use App\Http\Controllers\Api\RiskController;
 use App\Http\Controllers\Api\SupplierQualityController;
@@ -31,6 +32,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
             Route::get('/snapshot', [IsoForgeController::class, 'snapshot']);
             Route::get('/users', [IsoForgeController::class, 'users']);
             Route::get('/analytics', [AnalyticsController::class, 'overview'])->middleware('permission:analytics.view');
+            Route::get('/management-review-packets', [ManagementReviewPacketController::class, 'index'])->middleware('permission:review_packet.view');
+            Route::get('/management-review-packets/{managementReview}', [ManagementReviewPacketController::class, 'show'])->middleware('permission:review_packet.view');
+            Route::get('/management-review-packets/{managementReview}/download', [ManagementReviewPacketController::class, 'download'])->middleware('permission:review_packet.view');
 
             Route::get('/documents', [DocumentController::class, 'index'])->middleware('permission:document.view');
             Route::post('/documents', [DocumentController::class, 'store'])->middleware('permission:document.create');

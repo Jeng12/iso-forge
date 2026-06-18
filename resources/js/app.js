@@ -45,6 +45,11 @@ if (root) {
             training_competency: {},
             supplier_risk: {},
         },
+        reviewPackets: {
+            evidence_summary: {},
+            packets: [],
+        },
+        selectedReviewPacket: null,
         incidentResponse: {
             incident_reports: [],
             actions: [],
@@ -109,6 +114,9 @@ if (root) {
         analyticsCapaList: document.getElementById('analytics-capa-list'),
         analyticsTrainingList: document.getElementById('analytics-training-list'),
         analyticsSupplierList: document.getElementById('analytics-supplier-list'),
+        reviewPacketSummaryGrid: document.getElementById('review-packet-summary-grid'),
+        reviewPacketsList: document.getElementById('review-packets-list'),
+        reviewPacketPreview: document.getElementById('review-packet-preview'),
         incidentReportsBody: document.getElementById('incident-reports-body'),
         incidentActionsList: document.getElementById('incident-actions-list'),
         emergencyPlansBody: document.getElementById('emergency-plans-body'),
@@ -723,6 +731,62 @@ if (root) {
         ].join('');
     };
 
+    const renderReviewPackets = () => {
+        const summary = state.reviewPackets?.evidence_summary ?? {};
+        const auditEvents = summary.audit_chain?.events ?? 0;
+        const items = [
+            ['QMS Evidence', (summary.qms?.objectives ?? 0) + (summary.qms?.audits ?? 0) + (summary.qms?.open_findings ?? 0)],
+            ['Training Evidence', (summary.training?.programs ?? 0) + (summary.training?.assignments ?? 0) + (summary.training?.records ?? 0)],
+            ['Incident Evidence', (summary.incident_response?.reports ?? 0) + (summary.incident_response?.emergency_drills ?? 0)],
+            ['Supplier Evidence', (summary.supplier_quality?.suppliers ?? 0) + (summary.supplier_quality?.evaluations ?? 0) + (summary.supplier_quality?.certificates ?? 0) + (summary.supplier_quality?.calibration_records ?? 0)],
+            ['Audit Events', auditEvents],
+        ];
+
+        els.reviewPacketSummaryGrid.innerHTML = items.map(([label, value]) => `
+            <div class="rounded-lg border border-zinc-200 bg-white p-4">
+                <div class="text-sm font-medium text-zinc-500">${escapeHtml(label)}</div>
+                <div class="mt-3 text-3xl font-semibold">${escapeHtml(value)}</div>
+            </div>
+        `).join('');
+
+        els.reviewPacketsList.innerHTML = (state.reviewPackets?.packets ?? []).map((packet) => `
+            <div class="p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <div class="font-medium">${escapeHtml(packet.packet_id)}</div>
+                        <div class="mt-1 text-sm text-zinc-600">${escapeHtml(packet.title)} - ${escapeHtml(packet.review_date ?? '-')}</div>
+                        <div class="mt-1 text-xs font-medium text-zinc-500">${escapeHtml(packet.chair?.name ?? 'Unassigned chair')}</div>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        ${renderStatusBadge(packet.status)}
+                        <button data-preview-packet-id="${packet.id}" class="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50">Preview</button>
+                        <button data-download-packet-id="${packet.id}" class="rounded-lg bg-zinc-950 px-3 py-2 text-sm font-semibold text-white hover:bg-zinc-800">Download</button>
+                    </div>
+                </div>
+            </div>
+        `).join('') || '<div class="p-4 text-sm text-zinc-500">No management review packets found.</div>';
+
+        const packet = state.selectedReviewPacket;
+
+        if (!packet) {
+            els.reviewPacketPreview.innerHTML = '<div class="p-4 text-sm text-zinc-500">No packet selected.</div>';
+            return;
+        }
+
+        els.reviewPacketPreview.innerHTML = `
+            <div class="p-4">
+                <div class="font-medium">${escapeHtml(packet.packet_id)}</div>
+                <div class="mt-1 font-mono text-xs text-zinc-500">${escapeHtml(packet.packet_hash?.slice(0, 32))}</div>
+            </div>
+            ${renderDistribution('QMS', packet.evidence_summary?.qms)}
+            ${renderDistribution('Training', packet.evidence_summary?.training)}
+            ${renderDistribution('Incident Response', packet.evidence_summary?.incident_response)}
+            ${renderDistribution('Supplier Quality', packet.evidence_summary?.supplier_quality)}
+            ${renderDistribution('CAPA', packet.evidence_summary?.capa)}
+            ${renderDistribution('Audit Chain', packet.evidence_summary?.audit_chain)}
+        `;
+    };
+
     const sourceControlLabel = (type, control) => {
         if (!control) {
             return '-';
@@ -867,6 +931,7 @@ if (root) {
         renderSupplierQuality();
         renderTraining();
         renderAnalytics();
+        renderReviewPackets();
         renderIncidentResponse();
         renderCapa();
         renderTasks();
@@ -898,6 +963,7 @@ if (root) {
             supplierQuality,
             training,
             analytics,
+            reviewPackets,
             incidentResponse,
             correctiveActions,
             tasks,
@@ -913,6 +979,7 @@ if (root) {
             safeFetch(tenantPath('/supplier-quality'), { suppliers: [], evaluations: [], certificates: [], equipment_assets: [], calibration_records: [] }),
             safeFetch(tenantPath('/training'), { programs: [], requirements: [], assignments: [], records: [], awareness_acknowledgements: [], roles: [] }),
             safeFetch(tenantPath('/analytics'), { incident_trends: {}, capa_ageing: {}, training_competency: {}, supplier_risk: {} }),
+            safeFetch(tenantPath('/management-review-packets'), { evidence_summary: {}, packets: [] }),
             safeFetch(tenantPath('/incident-response'), { incident_reports: [], actions: [], emergency_plans: [], emergency_drills: [] }),
             safeFetch(tenantPath('/corrective-actions')),
             safeFetch(tenantPath('/workflow-tasks')),
@@ -929,6 +996,7 @@ if (root) {
         state.supplierQuality = supplierQuality;
         state.training = training;
         state.analytics = analytics;
+        state.reviewPackets = reviewPackets;
         state.incidentResponse = incidentResponse;
         state.correctiveActions = correctiveActions;
         state.tasks = tasks;
@@ -1583,6 +1651,8 @@ if (root) {
     document.addEventListener('click', async (event) => {
         const approveButton = event.target.closest('[data-approve-id]');
         const completeButton = event.target.closest('[data-complete-task-id]');
+        const previewPacketButton = event.target.closest('[data-preview-packet-id]');
+        const downloadPacketButton = event.target.closest('[data-download-packet-id]');
 
         if (approveButton) {
             try {
@@ -1605,6 +1675,46 @@ if (root) {
                 });
                 await loadWorkspace();
                 showStatus('Workflow task completed.');
+            } catch (error) {
+                showStatus(error.message, 'error');
+            }
+        }
+
+        if (previewPacketButton) {
+            try {
+                const payload = await api(tenantPath(`/management-review-packets/${previewPacketButton.dataset.previewPacketId}`));
+                state.selectedReviewPacket = payload.data;
+                renderReviewPackets();
+                showStatus('Packet preview loaded.');
+            } catch (error) {
+                showStatus(error.message, 'error');
+            }
+        }
+
+        if (downloadPacketButton) {
+            try {
+                const response = await fetch(tenantPath(`/management-review-packets/${downloadPacketButton.dataset.downloadPacketId}/download`), {
+                    headers: {
+                        Accept: 'application/json',
+                        Authorization: `Bearer ${state.token}`,
+                    },
+                });
+
+                if (!response.ok) {
+                    const payload = await response.json().catch(() => ({}));
+                    throw new Error(payload.message || 'Download failed.');
+                }
+
+                const blob = await response.blob();
+                const disposition = response.headers.get('Content-Disposition') ?? '';
+                const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? 'management-review-packet.json';
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                link.click();
+                URL.revokeObjectURL(url);
+                showStatus('Packet downloaded.');
             } catch (error) {
                 showStatus(error.message, 'error');
             }

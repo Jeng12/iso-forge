@@ -1,6 +1,6 @@
 # ISO-Forge
 
-ISO-Forge is a Laravel prototype for a developer-centric ISO compliance framework. The current build follows the local project documents: multi-tenant data isolation, RBAC, document control, workflow tasks, ISO 9001 risk/CAPA records, ISO 22000 HACCP controls, supplier quality evidence, training competency evidence, incident response and emergency drill evidence, operational trend analytics, electronic signatures, and a hash-chained audit ledger.
+ISO-Forge is a Laravel prototype for a developer-centric ISO compliance framework. The current build follows the local project documents: multi-tenant data isolation, RBAC, document control, workflow tasks, ISO 9001 risk/CAPA records, ISO 22000 HACCP controls, supplier quality evidence, training competency evidence, incident response and emergency drill evidence, operational trend analytics, management review evidence packets, electronic signatures, and a hash-chained audit ledger.
 
 ## Stack
 
@@ -42,6 +42,7 @@ Tenant: angkor-quality-foods
 - Training programs, competency requirements, assignments, completion records, and awareness acknowledgements
 - Incident reports, containment actions, emergency response plans, and emergency drill records
 - Trend analytics for incidents, CAPA ageing, training competency, and supplier risk
+- Exportable management review packets across QMS, training, incident, supplier, CAPA, and audit evidence
 - SHA-256 audit log chaining with `previous_hash`, `payload_hash`, and `entry_hash`
 - Dashboard for documents, approvals, risks, CAPA, tasks, and audit ledger
 - Sanctum-protected API routes with tenant access checks
@@ -139,6 +140,16 @@ Tenant: angkor-quality-foods
 - Analytics browser tab with compact summary metrics and four trend panels
 - Analytics API action protected by `analytics.view` permission
 
+## Phase 12 Management Review Evidence Packets
+
+- Management review packet index for seeded and created QMS review records
+- Exportable JSON packet detail with packet id, generated timestamp, tenant metadata, review inputs, decisions, actions, and evidence summaries
+- Evidence packet sections for QMS objectives/audits/findings, training programs/records, incident reports/drills, supplier evidence, open CAPA, and audit chain events
+- Deterministic packet hash for exported JSON evidence integrity
+- Packet download endpoint with JSON attachment headers
+- Packets browser tab with summary metrics, preview, and download actions
+- Packet API actions protected by `review_packet.view` permission
+
 ## API
 
 Authenticate:
@@ -161,6 +172,9 @@ Available tenant routes:
 - `GET /api/tenants/{tenant:slug}/snapshot`
 - `GET /api/tenants/{tenant:slug}/users`
 - `GET /api/tenants/{tenant:slug}/analytics`
+- `GET /api/tenants/{tenant:slug}/management-review-packets`
+- `GET /api/tenants/{tenant:slug}/management-review-packets/{managementReview}`
+- `GET /api/tenants/{tenant:slug}/management-review-packets/{managementReview}/download`
 - `GET /api/tenants/{tenant:slug}/documents`
 - `POST /api/tenants/{tenant:slug}/documents`
 - `GET /api/tenants/{tenant:slug}/document-approvals`
@@ -220,7 +234,7 @@ npm audit
 npm run build
 ```
 
-Current status: 39 tests passing and npm audit clean.
+Current status: 43 tests passing and npm audit clean.
 
 ## Verification Command
 
@@ -239,4 +253,4 @@ Audit chain valid. Checked 26 entries; legacy entries: 0.
 - Add file upload/storage for controlled document versions
 - Add request classes/resources for stricter API contracts
 - Add edit screens and validation summaries for Phase 3 forms
-- Add exportable management review packets from QMS, training, incident, and supplier evidence
+- Add PDF rendering for management review packets

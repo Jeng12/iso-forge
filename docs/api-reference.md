@@ -34,6 +34,9 @@ All tenant routes use:
 - `GET /snapshot`
 - `GET /users`
 - `GET /analytics`
+- `GET /management-review-packets`
+- `GET /management-review-packets/{managementReview}`
+- `GET /management-review-packets/{managementReview}/download`
 - `GET /audit-logs`
 - `POST /audit-logs`
 
@@ -117,4 +120,5 @@ All tenant routes use:
 - `training.view` and `training.manage` control training, competency, and awareness actions.
 - `incident.view` and `incident.manage` control incident response and emergency preparedness actions.
 - `analytics.view` controls trend analytics reads.
+- `review_packet.view` controls management review packet reads and JSON downloads.
 - `audit.view` controls audit-ledger reads and manual audit entries.
