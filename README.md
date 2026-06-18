@@ -69,6 +69,13 @@ Tenant: angkor-quality-foods
 - QMS browser tab for objectives, audits, findings, and management reviews
 - QMS API actions protected by `qms.view` and `qms.manage` permissions
 
+## Phase 5 Testing And Refinement
+
+- Audit-log payload snapshots for stronger ledger verification
+- `php artisan iso-forge:verify-audit-chain` command
+- Regression tests for unauthenticated access, cross-tenant validation, audit-chain verification, and tamper detection
+- Expanded test suite across backend APIs, frontend workspace route, QMS module, workflow actions, and audit integrity
+
 ## API
 
 Authenticate:
@@ -123,12 +130,24 @@ npm audit
 npm run build
 ```
 
-Current status: 16 tests passing and npm audit clean.
+Current status: 20 tests passing and npm audit clean.
+
+## Verification Command
+
+```bash
+php artisan iso-forge:verify-audit-chain
+```
+
+Expected result:
+
+```text
+Audit chain valid. Checked 8 entries; legacy entries: 0.
+```
 
 ## Next Development Targets
 
 - Add file upload/storage for controlled document versions
 - Add request classes/resources for stricter API contracts
 - Add edit screens and validation summaries for Phase 3 forms
-- Phase 5 testing and refinement: broaden regression coverage, validation boundaries, and release-readiness checks
+- Phase 6 documentation and deployment preparation
 - Expand ISO 22000 HACCP, CCP, OPRP, and monitoring-record modules
