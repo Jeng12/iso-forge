@@ -1,6 +1,6 @@
 # ISO-Forge
 
-ISO-Forge is a Laravel prototype for a developer-centric ISO compliance framework. The current build follows the local project documents: multi-tenant data isolation, RBAC, document control, workflow tasks, ISO 9001 risk/CAPA records, ISO 22000 HACCP controls, supplier quality evidence, training competency evidence, incident response and emergency drill evidence, electronic signatures, and a hash-chained audit ledger.
+ISO-Forge is a Laravel prototype for a developer-centric ISO compliance framework. The current build follows the local project documents: multi-tenant data isolation, RBAC, document control, workflow tasks, ISO 9001 risk/CAPA records, ISO 22000 HACCP controls, supplier quality evidence, training competency evidence, incident response and emergency drill evidence, operational trend analytics, electronic signatures, and a hash-chained audit ledger.
 
 ## Stack
 
@@ -41,6 +41,7 @@ Tenant: angkor-quality-foods
 - Supplier approvals, evaluations, certificates, equipment assets, and calibration records
 - Training programs, competency requirements, assignments, completion records, and awareness acknowledgements
 - Incident reports, containment actions, emergency response plans, and emergency drill records
+- Trend analytics for incidents, CAPA ageing, training competency, and supplier risk
 - SHA-256 audit log chaining with `previous_hash`, `payload_hash`, and `entry_hash`
 - Dashboard for documents, approvals, risks, CAPA, tasks, and audit ledger
 - Sanctum-protected API routes with tenant access checks
@@ -128,6 +129,16 @@ Tenant: angkor-quality-foods
 - Incidents browser tab for reports, actions, emergency plans, and drill evidence
 - Incident Response API actions protected by `incident.view` and `incident.manage` permissions
 
+## Phase 11 Trend Analytics
+
+- Read-only Analytics API for tenant-level trend summaries
+- Incident distributions by status and severity with recent incident evidence
+- CAPA ageing buckets for overdue, next 7 days, next 30 days, future, and missing due dates
+- Training competency summaries for assignment status, completion result, competency status, pass rate, and expiring records
+- Supplier risk summaries for risk level, approval status, expiring certificates, due calibrations, and calibration failures
+- Analytics browser tab with compact summary metrics and four trend panels
+- Analytics API action protected by `analytics.view` permission
+
 ## API
 
 Authenticate:
@@ -149,6 +160,7 @@ Available tenant routes:
 
 - `GET /api/tenants/{tenant:slug}/snapshot`
 - `GET /api/tenants/{tenant:slug}/users`
+- `GET /api/tenants/{tenant:slug}/analytics`
 - `GET /api/tenants/{tenant:slug}/documents`
 - `POST /api/tenants/{tenant:slug}/documents`
 - `GET /api/tenants/{tenant:slug}/document-approvals`
@@ -208,7 +220,7 @@ npm audit
 npm run build
 ```
 
-Current status: 36 tests passing and npm audit clean.
+Current status: 39 tests passing and npm audit clean.
 
 ## Verification Command
 
@@ -227,4 +239,4 @@ Audit chain valid. Checked 26 entries; legacy entries: 0.
 - Add file upload/storage for controlled document versions
 - Add request classes/resources for stricter API contracts
 - Add edit screens and validation summaries for Phase 3 forms
-- Add trend dashboards for incidents, CAPA ageing, training competency, and supplier risk
+- Add exportable management review packets from QMS, training, incident, and supplier evidence

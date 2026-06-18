@@ -33,6 +33,7 @@ All tenant routes use:
 
 - `GET /snapshot`
 - `GET /users`
+- `GET /analytics`
 - `GET /audit-logs`
 - `POST /audit-logs`
 
@@ -115,4 +116,5 @@ All tenant routes use:
 - `supplier.view` and `supplier.manage` control supplier quality and calibration actions.
 - `training.view` and `training.manage` control training, competency, and awareness actions.
 - `incident.view` and `incident.manage` control incident response and emergency preparedness actions.
+- `analytics.view` controls trend analytics reads.
 - `audit.view` controls audit-ledger reads and manual audit entries.

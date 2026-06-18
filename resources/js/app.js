@@ -39,6 +39,12 @@ if (root) {
             awareness_acknowledgements: [],
             roles: [],
         },
+        analytics: {
+            incident_trends: {},
+            capa_ageing: {},
+            training_competency: {},
+            supplier_risk: {},
+        },
         incidentResponse: {
             incident_reports: [],
             actions: [],
@@ -98,6 +104,11 @@ if (root) {
         trainingRequirementRoleSelect: document.getElementById('training-requirement-role-select'),
         trainingRequirementProgramSelect: document.getElementById('training-requirement-program-select'),
         trainingAwarenessDocumentSelect: document.getElementById('training-awareness-document-select'),
+        analyticsSummaryGrid: document.getElementById('analytics-summary-grid'),
+        analyticsIncidentList: document.getElementById('analytics-incident-list'),
+        analyticsCapaList: document.getElementById('analytics-capa-list'),
+        analyticsTrainingList: document.getElementById('analytics-training-list'),
+        analyticsSupplierList: document.getElementById('analytics-supplier-list'),
         incidentReportsBody: document.getElementById('incident-reports-body'),
         incidentActionsList: document.getElementById('incident-actions-list'),
         emergencyPlansBody: document.getElementById('emergency-plans-body'),
@@ -596,6 +607,122 @@ if (root) {
         `).join('') || '<div class="p-4 text-sm text-zinc-500">No awareness acknowledgements found.</div>';
     };
 
+    const renderDistribution = (title, values = {}) => {
+        const entries = Object.entries(values ?? {});
+
+        if (!entries.length) {
+            return `
+                <div class="p-4">
+                    <div class="text-sm font-semibold text-zinc-700">${escapeHtml(title)}</div>
+                    <div class="mt-2 text-sm text-zinc-500">No data found.</div>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="p-4">
+                <div class="text-sm font-semibold text-zinc-700">${escapeHtml(title)}</div>
+                <div class="mt-3 flex flex-wrap gap-2">
+                    ${entries.map(([label, count]) => `
+                        <span class="rounded-lg bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700">${escapeHtml(label)}: ${escapeHtml(count)}</span>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    };
+
+    const bucketLabel = (bucket) => String(bucket ?? '')
+        .replaceAll('_', ' ')
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+    const renderAnalytics = () => {
+        const analytics = state.analytics ?? {};
+        const incidents = analytics.incident_trends ?? {};
+        const capa = analytics.capa_ageing ?? {};
+        const training = analytics.training_competency ?? {};
+        const supplier = analytics.supplier_risk ?? {};
+        const bucketCounts = Object.fromEntries(Object.entries(capa.buckets ?? {}).map(([key, value]) => [bucketLabel(key), value]));
+        const items = [
+            ['Open Incidents', incidents.open ?? 0],
+            ['Open CAPA', capa.open_total ?? 0],
+            ['Overdue CAPA', capa.buckets?.overdue ?? 0],
+            ['Training Pass Rate', `${training.pass_rate ?? 0}%`],
+            ['High-Risk Suppliers', supplier.high_risk_suppliers ?? 0],
+            ['Certs Expiring', supplier.certificates_expiring_30_days ?? 0],
+            ['Calibrations Due', supplier.calibrations_due_30_days ?? 0],
+            ['Calibration Failures', supplier.calibration_failures ?? 0],
+        ];
+
+        els.analyticsSummaryGrid.innerHTML = items.map(([label, value]) => `
+            <div class="rounded-lg border border-zinc-200 bg-white p-4">
+                <div class="text-sm font-medium text-zinc-500">${escapeHtml(label)}</div>
+                <div class="mt-3 text-3xl font-semibold">${escapeHtml(value)}</div>
+            </div>
+        `).join('');
+
+        const recentIncidents = (incidents.recent ?? []).map((incident) => `
+            <div class="p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <div class="font-medium">${escapeHtml(incident.reference)} - ${escapeHtml(incident.title)}</div>
+                        <div class="mt-1 text-sm text-zinc-600">${escapeHtml(incident.owner?.name ?? 'Unassigned')} - ${escapeHtml(incident.detected_at)}</div>
+                    </div>
+                    ${renderStatusBadge(incident.severity)}
+                </div>
+            </div>
+        `).join('') || '<div class="p-4 text-sm text-zinc-500">No recent incidents found.</div>';
+
+        els.analyticsIncidentList.innerHTML = [
+            renderDistribution('By Status', incidents.by_status),
+            renderDistribution('By Severity', incidents.by_severity),
+            recentIncidents,
+        ].join('');
+
+        const capaItems = (capa.items ?? []).map((action) => `
+            <div class="p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <div class="font-medium">${escapeHtml(action.title)}</div>
+                        <div class="mt-1 text-sm text-zinc-600">${escapeHtml(action.assignee?.name ?? 'Unassigned')} - due ${escapeHtml(action.due_date ?? '-')}</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="rounded-lg bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700">${escapeHtml(bucketLabel(action.bucket))}</span>
+                        ${renderStatusBadge(action.status)}
+                    </div>
+                </div>
+            </div>
+        `).join('') || '<div class="p-4 text-sm text-zinc-500">No open CAPA found.</div>';
+
+        els.analyticsCapaList.innerHTML = [
+            renderDistribution('Ageing Buckets', bucketCounts),
+            capaItems,
+        ].join('');
+
+        els.analyticsTrainingList.innerHTML = [
+            renderDistribution('Assignments', training.assignments_by_status),
+            renderDistribution('Completion Results', training.records_by_result),
+            renderDistribution('Competency Status', training.records_by_competency_status),
+            `
+                <div class="p-4 text-sm text-zinc-600">
+                    <span class="font-semibold text-zinc-800">${escapeHtml(training.programs ?? 0)}</span> programs -
+                    <span class="font-semibold text-zinc-800">${escapeHtml(training.expiring_records_30_days ?? 0)}</span> records expiring in 30 days
+                </div>
+            `,
+        ].join('');
+
+        els.analyticsSupplierList.innerHTML = [
+            renderDistribution('Risk Level', supplier.suppliers_by_risk_level),
+            renderDistribution('Approval Status', supplier.suppliers_by_approval_status),
+            `
+                <div class="p-4 text-sm text-zinc-600">
+                    <span class="font-semibold text-zinc-800">${escapeHtml(supplier.certificates_expiring_30_days ?? 0)}</span> certificates expiring -
+                    <span class="font-semibold text-zinc-800">${escapeHtml(supplier.calibrations_due_30_days ?? 0)}</span> calibrations due -
+                    <span class="font-semibold text-zinc-800">${escapeHtml(supplier.calibration_failures ?? 0)}</span> calibration failures
+                </div>
+            `,
+        ].join('');
+    };
+
     const sourceControlLabel = (type, control) => {
         if (!control) {
             return '-';
@@ -739,6 +866,7 @@ if (root) {
         renderFsms();
         renderSupplierQuality();
         renderTraining();
+        renderAnalytics();
         renderIncidentResponse();
         renderCapa();
         renderTasks();
@@ -769,6 +897,7 @@ if (root) {
             fsms,
             supplierQuality,
             training,
+            analytics,
             incidentResponse,
             correctiveActions,
             tasks,
@@ -783,6 +912,7 @@ if (root) {
             safeFetch(tenantPath('/fsms'), { haccp_plans: [], hazards: [], ccps: [], oprps: [], prps: [], monitoring_records: [] }),
             safeFetch(tenantPath('/supplier-quality'), { suppliers: [], evaluations: [], certificates: [], equipment_assets: [], calibration_records: [] }),
             safeFetch(tenantPath('/training'), { programs: [], requirements: [], assignments: [], records: [], awareness_acknowledgements: [], roles: [] }),
+            safeFetch(tenantPath('/analytics'), { incident_trends: {}, capa_ageing: {}, training_competency: {}, supplier_risk: {} }),
             safeFetch(tenantPath('/incident-response'), { incident_reports: [], actions: [], emergency_plans: [], emergency_drills: [] }),
             safeFetch(tenantPath('/corrective-actions')),
             safeFetch(tenantPath('/workflow-tasks')),
@@ -798,6 +928,7 @@ if (root) {
         state.fsms = fsms;
         state.supplierQuality = supplierQuality;
         state.training = training;
+        state.analytics = analytics;
         state.incidentResponse = incidentResponse;
         state.correctiveActions = correctiveActions;
         state.tasks = tasks;

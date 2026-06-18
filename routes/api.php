@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CorrectiveActionController;
 use App\Http\Controllers\Api\DocumentController;
@@ -29,6 +30,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
         ->group(function (): void {
             Route::get('/snapshot', [IsoForgeController::class, 'snapshot']);
             Route::get('/users', [IsoForgeController::class, 'users']);
+            Route::get('/analytics', [AnalyticsController::class, 'overview'])->middleware('permission:analytics.view');
 
             Route::get('/documents', [DocumentController::class, 'index'])->middleware('permission:document.view');
             Route::post('/documents', [DocumentController::class, 'store'])->middleware('permission:document.create');

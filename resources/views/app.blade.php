@@ -46,6 +46,7 @@
                 </div>
                 <nav class="flex gap-1 overflow-x-auto px-3 pb-4 text-sm font-medium lg:block lg:space-y-1 lg:overflow-visible">
                     <button data-tab="overview" class="tab-button block rounded-lg bg-zinc-950 px-3 py-2 text-left text-white lg:w-full">Overview</button>
+                    <button data-tab="analytics" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">Analytics</button>
                     <button data-tab="documents" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">Documents</button>
                     <button data-tab="risks" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">Risks</button>
                     <button data-tab="qms" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">QMS</button>
@@ -89,6 +90,42 @@
                                     <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Workflow Tasks</h3>
                                 </div>
                                 <div id="overview-tasks" class="divide-y divide-zinc-100"></div>
+                            </section>
+                        </div>
+                    </section>
+
+                    <section data-panel="analytics" class="panel hidden space-y-6">
+                        <div id="analytics-summary-grid" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"></div>
+
+                        <div class="grid gap-6 xl:grid-cols-2">
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Incident Trends</h3>
+                                </div>
+                                <div id="analytics-incident-list" class="divide-y divide-zinc-100"></div>
+                            </section>
+
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">CAPA Ageing</h3>
+                                </div>
+                                <div id="analytics-capa-list" class="divide-y divide-zinc-100"></div>
+                            </section>
+                        </div>
+
+                        <div class="grid gap-6 xl:grid-cols-2">
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Training Competency</h3>
+                                </div>
+                                <div id="analytics-training-list" class="divide-y divide-zinc-100"></div>
+                            </section>
+
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Supplier Risk</h3>
+                                </div>
+                                <div id="analytics-supplier-list" class="divide-y divide-zinc-100"></div>
                             </section>
                         </div>
                     </section>

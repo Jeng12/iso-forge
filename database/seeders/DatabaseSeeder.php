@@ -74,6 +74,7 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Manage training module', 'slug' => 'training.manage'],
             ['name' => 'View incident response module', 'slug' => 'incident.view'],
             ['name' => 'Manage incident response module', 'slug' => 'incident.manage'],
+            ['name' => 'View trend analytics dashboard', 'slug' => 'analytics.view'],
         ])->map(fn (array $permission) => Permission::create($permission));
 
         $adminRole = Role::create([
@@ -123,6 +124,7 @@ class DatabaseSeeder extends Seeder
             'training.manage',
             'incident.view',
             'incident.manage',
+            'analytics.view',
         ])->pluck('id'));
         $auditorRole->permissions()->attach($permissions->whereIn('slug', [
             'document.view',
@@ -132,6 +134,7 @@ class DatabaseSeeder extends Seeder
             'supplier.view',
             'training.view',
             'incident.view',
+            'analytics.view',
         ])->pluck('id'));
         $operatorRole->permissions()->attach($permissions->whereIn('slug', [
             'document.view',
