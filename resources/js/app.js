@@ -10,6 +10,12 @@ if (root) {
         documents: [],
         approvals: [],
         risks: [],
+        qms: {
+            objectives: [],
+            audits: [],
+            findings: [],
+            management_reviews: [],
+        },
         correctiveActions: [],
         tasks: [],
         auditLogs: [],
@@ -34,6 +40,12 @@ if (root) {
         auditBody: document.getElementById('audit-body'),
         documentForm: document.getElementById('document-form'),
         riskForm: document.getElementById('risk-form'),
+        objectivesBody: document.getElementById('qms-objectives-body'),
+        auditsBody: document.getElementById('qms-audits-body'),
+        findingsList: document.getElementById('qms-findings-list'),
+        reviewsList: document.getElementById('qms-reviews-list'),
+        objectiveForm: document.getElementById('objective-form'),
+        auditForm: document.getElementById('audit-form'),
         capaForm: document.getElementById('capa-form'),
     };
 
@@ -120,6 +132,9 @@ if (root) {
             ['Approved', metrics.approved_documents ?? 0],
             ['Open CAPA', metrics.open_capas ?? 0],
             ['High Risks', metrics.high_risks ?? 0],
+            ['QMS Objectives', metrics.quality_objectives ?? 0],
+            ['Planned Audits', metrics.planned_audits ?? 0],
+            ['Open Findings', metrics.open_findings ?? 0],
             ['Audit Events', metrics.audit_events ?? 0],
         ];
 
@@ -200,6 +215,58 @@ if (root) {
         `).join('');
     };
 
+    const renderQms = () => {
+        els.objectivesBody.innerHTML = (state.qms.objectives ?? []).map((objective) => `
+            <tr>
+                <td class="min-w-72 px-4 py-3">
+                    <div class="font-medium">${escapeHtml(objective.title)}</div>
+                    <div class="mt-1 text-xs font-medium text-zinc-500">${escapeHtml(objective.measurement_method)}</div>
+                </td>
+                <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml(objective.owner?.name)}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml(objective.current_value ?? '-')} ${escapeHtml(objective.unit)}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml(objective.target_value)} ${escapeHtml(objective.unit)}</td>
+                <td class="whitespace-nowrap px-4 py-3">${renderStatusBadge(objective.status)}</td>
+            </tr>
+        `).join('');
+
+        els.auditsBody.innerHTML = (state.qms.audits ?? []).map((audit) => `
+            <tr>
+                <td class="min-w-72 px-4 py-3">
+                    <div class="font-medium">${escapeHtml(audit.title)}</div>
+                    <div class="mt-1 text-xs font-medium text-zinc-500">${escapeHtml(audit.scope)}</div>
+                </td>
+                <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml(audit.lead_auditor?.name)}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml(audit.scheduled_date)}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml((audit.findings ?? []).length)}</td>
+                <td class="whitespace-nowrap px-4 py-3">${renderStatusBadge(audit.status)}</td>
+            </tr>
+        `).join('');
+
+        els.findingsList.innerHTML = (state.qms.findings ?? []).map((finding) => `
+            <div class="p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <div class="font-medium">${escapeHtml(finding.reference)} · ${escapeHtml(finding.finding_type)}</div>
+                        <div class="mt-1 text-sm text-zinc-600">${escapeHtml(finding.iso_clause)} · ${escapeHtml(finding.description)}</div>
+                    </div>
+                    ${renderStatusBadge(finding.status)}
+                </div>
+            </div>
+        `).join('') || '<div class="p-4 text-sm text-zinc-500">No audit findings found.</div>';
+
+        els.reviewsList.innerHTML = (state.qms.management_reviews ?? []).map((review) => `
+            <div class="p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <div class="font-medium">${escapeHtml(review.title)}</div>
+                        <div class="mt-1 text-sm text-zinc-600">${escapeHtml(review.chair?.name)} · ${escapeHtml(review.review_date)}</div>
+                    </div>
+                    ${renderStatusBadge(review.status)}
+                </div>
+            </div>
+        `).join('') || '<div class="p-4 text-sm text-zinc-500">No management reviews found.</div>';
+    };
+
     const renderTasks = () => {
         const taskRows = state.tasks.map((task) => {
             const canComplete = task.status !== 'Completed'
@@ -244,6 +311,7 @@ if (root) {
         renderMetrics();
         renderDocuments();
         renderRisks();
+        renderQms();
         renderCapa();
         renderTasks();
         renderAudit();
@@ -269,6 +337,7 @@ if (root) {
             documents,
             approvals,
             risks,
+            qms,
             correctiveActions,
             tasks,
             auditLogs,
@@ -278,6 +347,7 @@ if (root) {
             safeFetch(tenantPath('/documents')),
             safeFetch(tenantPath('/document-approvals')),
             safeFetch(tenantPath('/risks')),
+            safeFetch(tenantPath('/qms'), { objectives: [], audits: [], findings: [], management_reviews: [] }),
             safeFetch(tenantPath('/corrective-actions')),
             safeFetch(tenantPath('/workflow-tasks')),
             safeFetch(tenantPath('/audit-logs')),
@@ -288,6 +358,7 @@ if (root) {
         state.documents = documents;
         state.approvals = approvals;
         state.risks = risks;
+        state.qms = qms;
         state.correctiveActions = correctiveActions;
         state.tasks = tasks;
         state.auditLogs = auditLogs;
@@ -409,6 +480,64 @@ if (root) {
             els.riskForm.reset();
             await loadWorkspace();
             showStatus('Risk created.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.objectiveForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.objectiveForm);
+
+        const payload = {
+            title: form.get('title'),
+            measurement_method: form.get('measurement_method'),
+            target_value: Number(form.get('target_value')),
+            unit: form.get('unit') || '%',
+            owner_id: Number(form.get('owner_id')),
+            due_date: form.get('due_date') || null,
+            status: 'Active',
+        };
+
+        if (form.get('baseline_value')) {
+            payload.baseline_value = Number(form.get('baseline_value'));
+        }
+
+        if (form.get('current_value')) {
+            payload.current_value = Number(form.get('current_value'));
+        }
+
+        try {
+            await api(tenantPath('/qms/objectives'), {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            });
+            els.objectiveForm.reset();
+            await loadWorkspace();
+            showStatus('Quality objective created.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.auditForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.auditForm);
+
+        try {
+            await api(tenantPath('/qms/audits'), {
+                method: 'POST',
+                body: JSON.stringify({
+                    title: form.get('title'),
+                    scope: form.get('scope'),
+                    lead_auditor_id: Number(form.get('lead_auditor_id')),
+                    scheduled_date: form.get('scheduled_date'),
+                    status: 'Planned',
+                }),
+            });
+            els.auditForm.reset();
+            await loadWorkspace();
+            showStatus('Audit created.');
         } catch (error) {
             showStatus(error.message, 'error');
         }

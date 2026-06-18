@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\Audit;
 use App\Models\AuditLog;
 use App\Models\CorrectiveAction;
 use App\Models\Document;
 use App\Models\DocumentApproval;
 use App\Models\ElectronicSignature;
+use App\Models\ManagementReview;
+use App\Models\QualityObjective;
 use App\Models\Risk;
 use App\Models\Tenant;
 use App\Models\User;
@@ -36,6 +39,7 @@ class IsoForgeFeatureTest extends TestCase
             ->assertSee('ISO-Forge')
             ->assertSee('Compliance workspace')
             ->assertSee('New Document')
+            ->assertSee('New Objective')
             ->assertSee('New CAPA');
     }
 
@@ -82,6 +86,113 @@ class IsoForgeFeatureTest extends TestCase
             ->getJson("/api/tenants/{$tenant->slug}/workflow-tasks")
             ->assertOk()
             ->assertJsonCount(2, 'data');
+    }
+
+    public function test_phase_four_qms_overview_returns_seeded_iso_9001_records(): void
+    {
+        $this->seed();
+
+        $tenant = $this->tenant();
+        $jojo = $this->user('jojo@iso-forge.test');
+
+        $this->withToken($this->tokenFor($jojo))
+            ->getJson("/api/tenants/{$tenant->slug}/qms")
+            ->assertOk()
+            ->assertJsonCount(1, 'data.objectives')
+            ->assertJsonCount(1, 'data.audits')
+            ->assertJsonCount(1, 'data.findings')
+            ->assertJsonCount(1, 'data.management_reviews')
+            ->assertJsonPath('data.objectives.0.iso_clause', 'ISO 9001:2015 6.2')
+            ->assertJsonPath('data.findings.0.reference', 'AF-2026-0001');
+    }
+
+    public function test_phase_four_qms_viewer_cannot_create_objective(): void
+    {
+        $this->seed();
+
+        $tenant = $this->tenant();
+        $auditor = $this->user('auditor@iso-forge.test');
+
+        $this->withToken($this->tokenFor($auditor))
+            ->getJson("/api/tenants/{$tenant->slug}/qms")
+            ->assertOk();
+
+        $this->withToken($this->tokenFor($auditor))
+            ->postJson("/api/tenants/{$tenant->slug}/qms/objectives", [
+                'title' => 'Improve supplier release accuracy',
+                'target_value' => 98,
+                'unit' => '%',
+                'measurement_method' => 'Monthly supplier-release sampling',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_phase_four_qms_manager_can_create_objective_audit_finding_and_review(): void
+    {
+        $this->seed();
+
+        $tenant = $this->tenant();
+        $jojo = $this->user('jojo@iso-forge.test');
+        $token = $this->tokenFor($jojo);
+
+        $objectiveResponse = $this->withToken($token)
+            ->postJson("/api/tenants/{$tenant->slug}/qms/objectives", [
+                'title' => 'Improve on-time CAPA effectiveness checks',
+                'baseline_value' => 72,
+                'target_value' => 95,
+                'current_value' => 81,
+                'unit' => '%',
+                'measurement_method' => 'Monthly CAPA verification report',
+                'owner_id' => $jojo->id,
+                'due_date' => now()->addMonths(2)->toDateString(),
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.title', 'Improve on-time CAPA effectiveness checks')
+            ->assertJsonPath('data.target_value', '95.00');
+
+        $auditResponse = $this->withToken($token)
+            ->postJson("/api/tenants/{$tenant->slug}/qms/audits", [
+                'title' => 'Focused CAPA Process Audit',
+                'scope' => 'CAPA closure, verification independence, and objective evidence.',
+                'lead_auditor_id' => $jojo->id,
+                'scheduled_date' => now()->addDays(12)->toDateString(),
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'Planned');
+
+        $this->withToken($token)
+            ->postJson("/api/tenants/{$tenant->slug}/qms/audits/{$auditResponse->json('data.id')}/findings", [
+                'reference' => 'AF-2026-0099',
+                'iso_clause' => 'ISO 9001:2015 10.2',
+                'finding_type' => 'Opportunity',
+                'severity' => 'Minor',
+                'description' => 'Effectiveness evidence could be linked more directly to objective metrics.',
+                'evidence' => 'Sampled CAPA record includes closure notes but no objective trend link.',
+                'owner_id' => $jojo->id,
+                'due_date' => now()->addDays(20)->toDateString(),
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.reference', 'AF-2026-0099');
+
+        $this->withToken($token)
+            ->postJson("/api/tenants/{$tenant->slug}/qms/management-reviews", [
+                'title' => 'CAPA Performance Leadership Review',
+                'review_date' => now()->addDays(25)->toDateString(),
+                'chair_id' => $jojo->id,
+                'inputs' => ['capa_effectiveness' => 'On-time checks improved to 81%.'],
+                'decisions' => ['increase_dashboard_review' => true],
+                'actions' => [['owner' => 'Jojo ISO Lead', 'action' => 'Review CAPA trend monthly.']],
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'Planned');
+
+        $this->assertDatabaseHas('audit_logs', [
+            'event' => 'qms.objective.created',
+            'auditable_id' => $objectiveResponse->json('data.id'),
+        ]);
+        $this->assertSame(2, QualityObjective::query()->where('tenant_id', $tenant->id)->count());
+        $this->assertSame(2, Audit::query()->where('tenant_id', $tenant->id)->count());
+        $this->assertSame(2, ManagementReview::query()->where('tenant_id', $tenant->id)->count());
     }
 
     public function test_api_rejects_cross_tenant_access(): void

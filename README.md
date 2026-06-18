@@ -60,6 +60,15 @@ Tenant: angkor-quality-foods
 - Inline actions for document approval and workflow task completion
 - Shared user selectors populated from tenant API data
 
+## Phase 4 ISO 9001 QMS
+
+- Quality objectives with targets, current values, owners, and measurement methods
+- Internal audit program records with lead auditor, scope, schedule, findings, and status
+- Audit findings linked to ISO clauses and optional nonconformance records
+- Management review records with structured inputs, decisions, and actions
+- QMS browser tab for objectives, audits, findings, and management reviews
+- QMS API actions protected by `qms.view` and `qms.manage` permissions
+
 ## API
 
 Authenticate:
@@ -95,6 +104,13 @@ Available tenant routes:
 - `PATCH /api/tenants/{tenant:slug}/corrective-actions/{correctiveAction}`
 - `GET /api/tenants/{tenant:slug}/workflow-tasks`
 - `POST /api/tenants/{tenant:slug}/workflow-tasks/{workflowTask}/complete`
+- `GET /api/tenants/{tenant:slug}/qms`
+- `POST /api/tenants/{tenant:slug}/qms/objectives`
+- `PATCH /api/tenants/{tenant:slug}/qms/objectives/{qualityObjective}`
+- `POST /api/tenants/{tenant:slug}/qms/audits`
+- `PATCH /api/tenants/{tenant:slug}/qms/audits/{audit}`
+- `POST /api/tenants/{tenant:slug}/qms/audits/{audit}/findings`
+- `POST /api/tenants/{tenant:slug}/qms/management-reviews`
 - `GET /api/tenants/{tenant:slug}/audit-logs`
 - `POST /api/tenants/{tenant:slug}/audit-logs`
 
@@ -107,11 +123,12 @@ npm audit
 npm run build
 ```
 
-Current status: 13 tests passing and npm audit clean.
+Current status: 16 tests passing and npm audit clean.
 
 ## Next Development Targets
 
 - Add file upload/storage for controlled document versions
 - Add request classes/resources for stricter API contracts
 - Add edit screens and validation summaries for Phase 3 forms
+- Phase 5 testing and refinement: broaden regression coverage, validation boundaries, and release-readiness checks
 - Expand ISO 22000 HACCP, CCP, OPRP, and monitoring-record modules

@@ -2,14 +2,18 @@
 
 namespace Database\Seeders;
 
+use App\Models\Audit;
+use App\Models\AuditFinding;
 use App\Models\AuditLog;
 use App\Models\CorrectiveAction;
 use App\Models\Document;
 use App\Models\DocumentApproval;
 use App\Models\DocumentVersion;
 use App\Models\ElectronicSignature;
+use App\Models\ManagementReview;
 use App\Models\NonConformance;
 use App\Models\Permission;
+use App\Models\QualityObjective;
 use App\Models\Risk;
 use App\Models\Role;
 use App\Models\Tenant;
@@ -39,6 +43,8 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Close CAPA', 'slug' => 'capa.close'],
             ['name' => 'View audit ledger', 'slug' => 'audit.view'],
             ['name' => 'Manage risks', 'slug' => 'risk.manage'],
+            ['name' => 'View QMS module', 'slug' => 'qms.view'],
+            ['name' => 'Manage QMS module', 'slug' => 'qms.manage'],
         ])->map(fn (array $permission) => Permission::create($permission));
 
         $adminRole = Role::create([
@@ -78,10 +84,13 @@ class DatabaseSeeder extends Seeder
             'capa.close',
             'audit.view',
             'risk.manage',
+            'qms.view',
+            'qms.manage',
         ])->pluck('id'));
         $auditorRole->permissions()->attach($permissions->whereIn('slug', [
             'document.view',
             'audit.view',
+            'qms.view',
         ])->pluck('id'));
         $operatorRole->permissions()->attach($permissions->whereIn('slug', [
             'document.view',
@@ -239,6 +248,68 @@ class DatabaseSeeder extends Seeder
             'status' => 'In Progress',
         ]);
 
+        $objective = QualityObjective::create([
+            'tenant_id' => $tenant->id,
+            'title' => 'Reduce uncontrolled document use on production lines',
+            'iso_clause' => 'ISO 9001:2015 6.2',
+            'baseline_value' => 6,
+            'target_value' => 1,
+            'current_value' => 2,
+            'unit' => 'incidents',
+            'measurement_method' => 'Monthly line-clearance audit sampling',
+            'owner_id' => $jojo->id,
+            'due_date' => now()->addMonths(3)->toDateString(),
+            'status' => 'Active',
+        ]);
+
+        $auditProgram = Audit::create([
+            'tenant_id' => $tenant->id,
+            'title' => 'Q3 ISO 9001 Internal Audit',
+            'audit_type' => 'Internal',
+            'iso_standard' => 'ISO 9001:2015',
+            'scope' => 'Document control, production release, supplier quality, and CAPA effectiveness.',
+            'lead_auditor_id' => $auditor->id,
+            'scheduled_date' => now()->addDays(21)->toDateString(),
+            'status' => 'Planned',
+            'summary' => 'Audit plan prepared for process-based QMS review.',
+        ]);
+
+        $finding = AuditFinding::create([
+            'tenant_id' => $tenant->id,
+            'audit_id' => $auditProgram->id,
+            'non_conformance_id' => $nonConformance->id,
+            'reference' => 'AF-2026-0001',
+            'iso_clause' => 'ISO 9001:2015 7.5.3',
+            'finding_type' => 'Nonconformity',
+            'severity' => 'Major',
+            'description' => 'Controlled document retrieval process was not consistently followed.',
+            'evidence' => 'Two sampled sanitation records referenced obsolete revision codes.',
+            'owner_id' => $jojo->id,
+            'due_date' => now()->addDays(14)->toDateString(),
+            'status' => 'Open',
+        ]);
+
+        $review = ManagementReview::create([
+            'tenant_id' => $tenant->id,
+            'title' => 'Monthly QMS Leadership Review',
+            'review_date' => now()->addDays(30)->toDateString(),
+            'chair_id' => $jojo->id,
+            'inputs' => [
+                'audit_results' => 'Q3 internal audit plan and open document-control finding.',
+                'customer_feedback' => 'No critical complaints in the current period.',
+                'process_performance' => 'CAPA closure timeliness is stable but document retrieval needs improvement.',
+            ],
+            'decisions' => [
+                'prioritize_qr_document_access' => true,
+                'increase_floor_supervisor_sampling' => true,
+            ],
+            'actions' => [
+                ['owner' => 'Jojo ISO Lead', 'action' => 'Deploy approved-document QR access points.'],
+                ['owner' => 'Joto Quality Designer', 'action' => 'Update line clearance visual checks.'],
+            ],
+            'status' => 'Planned',
+        ]);
+
         $workflow = Workflow::create([
             'tenant_id' => $tenant->id,
             'name' => 'CAPA Workflow',
@@ -302,6 +373,26 @@ class DatabaseSeeder extends Seeder
         AuditLog::appendFor($tenant->id, $joto->id, 'risk.assessed', Risk::class, $supplierRisk->id, [], [
             'risk_score' => $supplierRisk->risk_score,
             'residual_score' => $supplierRisk->residual_score,
+        ]);
+
+        AuditLog::appendFor($tenant->id, $jojo->id, 'qms.objective.created', QualityObjective::class, $objective->id, [], [
+            'title' => $objective->title,
+            'target_value' => $objective->target_value,
+        ]);
+
+        AuditLog::appendFor($tenant->id, $auditor->id, 'qms.audit.created', Audit::class, $auditProgram->id, [], [
+            'title' => $auditProgram->title,
+            'scheduled_date' => $auditProgram->scheduled_date?->toDateString(),
+        ]);
+
+        AuditLog::appendFor($tenant->id, $auditor->id, 'qms.audit_finding.created', AuditFinding::class, $finding->id, [], [
+            'reference' => $finding->reference,
+            'severity' => $finding->severity,
+        ]);
+
+        AuditLog::appendFor($tenant->id, $jojo->id, 'qms.management_review.created', ManagementReview::class, $review->id, [], [
+            'title' => $review->title,
+            'review_date' => $review->review_date?->toDateString(),
         ]);
     }
 }

@@ -44,6 +44,26 @@ class Tenant extends Model
         return $this->hasMany(Risk::class);
     }
 
+    public function qualityObjectives(): HasMany
+    {
+        return $this->hasMany(QualityObjective::class);
+    }
+
+    public function audits(): HasMany
+    {
+        return $this->hasMany(Audit::class);
+    }
+
+    public function auditFindings(): HasMany
+    {
+        return $this->hasMany(AuditFinding::class);
+    }
+
+    public function managementReviews(): HasMany
+    {
+        return $this->hasMany(ManagementReview::class);
+    }
+
     public function correctiveActions(): HasMany
     {
         return $this->hasMany(CorrectiveAction::class);

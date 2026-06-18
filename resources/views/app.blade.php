@@ -48,6 +48,7 @@
                     <button data-tab="overview" class="tab-button block rounded-lg bg-zinc-950 px-3 py-2 text-left text-white lg:w-full">Overview</button>
                     <button data-tab="documents" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">Documents</button>
                     <button data-tab="risks" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">Risks</button>
+                    <button data-tab="qms" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">QMS</button>
                     <button data-tab="capa" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">CAPA</button>
                     <button data-tab="audit" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">Audit</button>
                 </nav>
@@ -213,6 +214,98 @@
                             </div>
                             <div id="task-list" class="divide-y divide-zinc-100"></div>
                         </section>
+                    </section>
+
+                    <section data-panel="qms" class="panel hidden space-y-6">
+                        <div class="grid gap-6 xl:grid-cols-[1fr_360px]">
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Quality Objectives</h3>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-zinc-200 text-left text-sm">
+                                        <thead class="bg-zinc-50 text-xs font-semibold uppercase tracking-normal text-zinc-500">
+                                            <tr>
+                                                <th class="px-4 py-3">Objective</th>
+                                                <th class="px-4 py-3">Owner</th>
+                                                <th class="px-4 py-3">Current</th>
+                                                <th class="px-4 py-3">Target</th>
+                                                <th class="px-4 py-3">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="qms-objectives-body" class="divide-y divide-zinc-100"></tbody>
+                                    </table>
+                                </div>
+                            </section>
+
+                            <form id="objective-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">New Objective</h3>
+                                <div class="space-y-3">
+                                    <input name="title" required placeholder="Objective title" class="form-input">
+                                    <input name="measurement_method" required placeholder="Measurement method" class="form-input">
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input name="baseline_value" type="number" step="0.01" placeholder="Baseline" class="form-input">
+                                        <input name="target_value" required type="number" step="0.01" placeholder="Target" class="form-input">
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input name="current_value" type="number" step="0.01" placeholder="Current" class="form-input">
+                                        <input name="unit" placeholder="Unit" value="%" class="form-input">
+                                    </div>
+                                    <select name="owner_id" class="form-input user-select"></select>
+                                    <input name="due_date" type="date" class="form-input">
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Create</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="grid gap-6 xl:grid-cols-[1fr_360px]">
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Audit Program</h3>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-zinc-200 text-left text-sm">
+                                        <thead class="bg-zinc-50 text-xs font-semibold uppercase tracking-normal text-zinc-500">
+                                            <tr>
+                                                <th class="px-4 py-3">Audit</th>
+                                                <th class="px-4 py-3">Lead</th>
+                                                <th class="px-4 py-3">Scheduled</th>
+                                                <th class="px-4 py-3">Findings</th>
+                                                <th class="px-4 py-3">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="qms-audits-body" class="divide-y divide-zinc-100"></tbody>
+                                    </table>
+                                </div>
+                            </section>
+
+                            <form id="audit-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">New Audit</h3>
+                                <div class="space-y-3">
+                                    <input name="title" required placeholder="Audit title" class="form-input">
+                                    <textarea name="scope" required placeholder="Scope" class="form-input min-h-24"></textarea>
+                                    <select name="lead_auditor_id" class="form-input user-select"></select>
+                                    <input name="scheduled_date" required type="date" class="form-input">
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Create</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="grid gap-6 xl:grid-cols-2">
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Audit Findings</h3>
+                                </div>
+                                <div id="qms-findings-list" class="divide-y divide-zinc-100"></div>
+                            </section>
+
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Management Reviews</h3>
+                                </div>
+                                <div id="qms-reviews-list" class="divide-y divide-zinc-100"></div>
+                            </section>
+                        </div>
                     </section>
 
                     <section data-panel="audit" class="panel hidden">

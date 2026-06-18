@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CorrectiveActionController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\IsoForgeController;
+use App\Http\Controllers\Api\QmsController;
 use App\Http\Controllers\Api\RiskController;
 use App\Http\Controllers\Api\WorkflowTaskController;
 use Illuminate\Http\Request;
@@ -41,6 +42,14 @@ Route::middleware('auth:sanctum')->group(function (): void {
             Route::patch('/corrective-actions/{correctiveAction}', [CorrectiveActionController::class, 'update'])->middleware('permission:capa.create,capa.close');
             Route::get('/workflow-tasks', [WorkflowTaskController::class, 'index'])->middleware('permission:capa.create,capa.close');
             Route::post('/workflow-tasks/{workflowTask}/complete', [WorkflowTaskController::class, 'complete']);
+
+            Route::get('/qms', [QmsController::class, 'overview'])->middleware('permission:qms.view,qms.manage');
+            Route::post('/qms/objectives', [QmsController::class, 'storeObjective'])->middleware('permission:qms.manage');
+            Route::patch('/qms/objectives/{qualityObjective}', [QmsController::class, 'updateObjective'])->middleware('permission:qms.manage');
+            Route::post('/qms/audits', [QmsController::class, 'storeAudit'])->middleware('permission:qms.manage');
+            Route::patch('/qms/audits/{audit}', [QmsController::class, 'updateAudit'])->middleware('permission:qms.manage');
+            Route::post('/qms/audits/{audit}/findings', [QmsController::class, 'storeFinding'])->middleware('permission:qms.manage');
+            Route::post('/qms/management-reviews', [QmsController::class, 'storeManagementReview'])->middleware('permission:qms.manage');
 
             Route::get('/audit-logs', [IsoForgeController::class, 'auditLogs'])->middleware('permission:audit.view');
             Route::post('/audit-logs', [IsoForgeController::class, 'storeAuditLog'])->middleware('permission:audit.view');
