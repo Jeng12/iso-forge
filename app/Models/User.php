@@ -41,6 +41,21 @@ class User extends Authenticatable
         return $this->hasMany(CorrectiveAction::class, 'assigned_to_id');
     }
 
+    public function trainingAssignments(): HasMany
+    {
+        return $this->hasMany(TrainingAssignment::class);
+    }
+
+    public function trainingRecords(): HasMany
+    {
+        return $this->hasMany(TrainingRecord::class);
+    }
+
+    public function awarenessAcknowledgements(): HasMany
+    {
+        return $this->hasMany(AwarenessAcknowledgement::class);
+    }
+
     public function hasPermission(string $permission): bool
     {
         return $this->roles()

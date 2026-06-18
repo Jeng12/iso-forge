@@ -44,6 +44,9 @@ class IsoForgeFeatureTest extends TestCase
             ->assertSee('New Monitoring Record')
             ->assertSee('New Supplier')
             ->assertSee('New Calibration')
+            ->assertSee('New Program')
+            ->assertSee('Complete Training')
+            ->assertSee('New Awareness')
             ->assertSee('New CAPA');
     }
 

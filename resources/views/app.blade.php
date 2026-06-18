@@ -51,6 +51,7 @@
                     <button data-tab="qms" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">QMS</button>
                     <button data-tab="fsms" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">FSMS</button>
                     <button data-tab="supplier-quality" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">Suppliers</button>
+                    <button data-tab="training" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">Training</button>
                     <button data-tab="capa" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">CAPA</button>
                     <button data-tab="audit" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">Audit</button>
                 </nav>
@@ -545,6 +546,138 @@
                             </div>
                             <div id="supplier-quality-certificates-list" class="divide-y divide-zinc-100"></div>
                         </section>
+                    </section>
+
+                    <section data-panel="training" class="panel hidden space-y-6">
+                        <div class="grid gap-6 xl:grid-cols-[1fr_360px]">
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Training Programs</h3>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-zinc-200 text-left text-sm">
+                                        <thead class="bg-zinc-50 text-xs font-semibold uppercase tracking-normal text-zinc-500">
+                                            <tr>
+                                                <th class="px-4 py-3">Program</th>
+                                                <th class="px-4 py-3">Clause</th>
+                                                <th class="px-4 py-3">Owner</th>
+                                                <th class="px-4 py-3">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="training-programs-body" class="divide-y divide-zinc-100"></tbody>
+                                    </table>
+                                </div>
+                            </section>
+
+                            <form id="training-program-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">New Program</h3>
+                                <div class="space-y-3">
+                                    <input name="code" required placeholder="Program code" class="form-input">
+                                    <input name="title" required placeholder="Title" class="form-input">
+                                    <input name="iso_clause" placeholder="ISO clause" class="form-input">
+                                    <input name="delivery_method" placeholder="Delivery method" value="Classroom" class="form-input">
+                                    <select name="owner_id" class="form-input user-select"></select>
+                                    <input name="refresher_interval_days" type="number" min="1" placeholder="Refresher days" class="form-input">
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Create</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="grid gap-6 xl:grid-cols-[1fr_360px]">
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Training Assignments</h3>
+                                </div>
+                                <div id="training-assignments-list" class="divide-y divide-zinc-100"></div>
+                            </section>
+
+                            <form id="training-assignment-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">New Assignment</h3>
+                                <div class="space-y-3">
+                                    <select id="training-program-select" name="training_program_id" required class="form-input"></select>
+                                    <select name="user_id" class="form-input user-select"></select>
+                                    <select id="training-role-select" name="required_for_role_id" class="form-input"></select>
+                                    <input name="due_date" required type="date" class="form-input">
+                                    <textarea name="notes" placeholder="Notes" class="form-input min-h-20"></textarea>
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Assign</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="grid gap-6 xl:grid-cols-[1fr_360px]">
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Training Records</h3>
+                                </div>
+                                <div id="training-records-list" class="divide-y divide-zinc-100"></div>
+                            </section>
+
+                            <form id="training-record-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">Complete Training</h3>
+                                <div class="space-y-3">
+                                    <select id="training-assignment-select" name="training_assignment_id" required class="form-input"></select>
+                                    <select name="trainer_id" class="form-input user-select"></select>
+                                    <select id="training-evidence-document-select" name="evidence_document_id" class="form-input"></select>
+                                    <input name="completed_at" required type="date" class="form-input">
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input name="score" type="number" min="0" max="100" step="0.01" placeholder="Score" class="form-input">
+                                        <select name="result" class="form-input">
+                                            <option>Pass</option>
+                                            <option>Fail</option>
+                                        </select>
+                                    </div>
+                                    <select name="competency_status" class="form-input">
+                                        <option>Competent</option>
+                                        <option>Needs Coaching</option>
+                                    </select>
+                                    <input name="expires_at" type="date" class="form-input">
+                                    <textarea name="notes" placeholder="Notes" class="form-input min-h-20"></textarea>
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Record</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="grid gap-6 xl:grid-cols-2">
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Competency Requirements</h3>
+                                </div>
+                                <div id="training-requirements-list" class="divide-y divide-zinc-100"></div>
+                            </section>
+
+                            <form id="training-requirement-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">New Requirement</h3>
+                                <div class="space-y-3">
+                                    <select id="training-requirement-role-select" name="role_id" required class="form-input"></select>
+                                    <select id="training-requirement-program-select" name="training_program_id" required class="form-input"></select>
+                                    <input name="competency_area" required placeholder="Competency area" class="form-input">
+                                    <input name="required_level" placeholder="Required level" value="Qualified" class="form-input">
+                                    <input name="assessment_method" placeholder="Assessment method" value="Supervisor verification" class="form-input">
+                                    <input name="due_within_days" type="number" min="1" value="30" class="form-input">
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Create</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="grid gap-6 xl:grid-cols-2">
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Awareness Acknowledgements</h3>
+                                </div>
+                                <div id="training-awareness-list" class="divide-y divide-zinc-100"></div>
+                            </section>
+
+                            <form id="training-awareness-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">New Awareness</h3>
+                                <div class="space-y-3">
+                                    <select id="training-awareness-document-select" name="document_id" required class="form-input"></select>
+                                    <select name="user_id" class="form-input user-select"></select>
+                                    <input name="acknowledged_at" type="datetime-local" class="form-input">
+                                    <textarea name="statement" placeholder="Statement" class="form-input min-h-20"></textarea>
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Acknowledge</button>
+                                </div>
+                            </form>
+                        </div>
                     </section>
 
                     <section data-panel="audit" class="panel hidden">

@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\IsoForgeController;
 use App\Http\Controllers\Api\QmsController;
 use App\Http\Controllers\Api\RiskController;
 use App\Http\Controllers\Api\SupplierQualityController;
+use App\Http\Controllers\Api\TrainingController;
 use App\Http\Controllers\Api\WorkflowTaskController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -68,6 +69,13 @@ Route::middleware('auth:sanctum')->group(function (): void {
             Route::post('/supplier-quality/suppliers/{supplier}/certificates', [SupplierQualityController::class, 'storeCertificate'])->middleware('permission:supplier.manage');
             Route::post('/supplier-quality/equipment', [SupplierQualityController::class, 'storeEquipment'])->middleware('permission:supplier.manage');
             Route::post('/supplier-quality/equipment/{equipmentAsset}/calibrations', [SupplierQualityController::class, 'storeCalibration'])->middleware('permission:supplier.manage');
+
+            Route::get('/training', [TrainingController::class, 'overview'])->middleware('permission:training.view,training.manage');
+            Route::post('/training/programs', [TrainingController::class, 'storeProgram'])->middleware('permission:training.manage');
+            Route::post('/training/requirements', [TrainingController::class, 'storeRequirement'])->middleware('permission:training.manage');
+            Route::post('/training/programs/{trainingProgram}/assignments', [TrainingController::class, 'storeAssignment'])->middleware('permission:training.manage');
+            Route::post('/training/assignments/{trainingAssignment}/records', [TrainingController::class, 'storeRecord'])->middleware('permission:training.manage');
+            Route::post('/training/awareness-acknowledgements', [TrainingController::class, 'storeAwarenessAcknowledgement'])->middleware('permission:training.manage');
 
             Route::get('/audit-logs', [IsoForgeController::class, 'auditLogs'])->middleware('permission:audit.view');
             Route::post('/audit-logs', [IsoForgeController::class, 'storeAuditLog'])->middleware('permission:audit.view');

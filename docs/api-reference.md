@@ -86,6 +86,15 @@ All tenant routes use:
 - `POST /supplier-quality/equipment`
 - `POST /supplier-quality/equipment/{equipmentAsset}/calibrations`
 
+### Training And Competency
+
+- `GET /training`
+- `POST /training/programs`
+- `POST /training/requirements`
+- `POST /training/programs/{trainingProgram}/assignments`
+- `POST /training/assignments/{trainingAssignment}/records`
+- `POST /training/awareness-acknowledgements`
+
 ## Authorization
 
 - Tenant middleware rejects cross-tenant access.
@@ -95,4 +104,5 @@ All tenant routes use:
 - `qms.view` and `qms.manage` control ISO 9001 module actions.
 - `fsms.view` and `fsms.manage` control ISO 22000 module actions.
 - `supplier.view` and `supplier.manage` control supplier quality and calibration actions.
+- `training.view` and `training.manage` control training, competency, and awareness actions.
 - `audit.view` controls audit-ledger reads and manual audit entries.

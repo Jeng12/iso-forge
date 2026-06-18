@@ -24,6 +24,7 @@ Use this checklist before tagging or deploying a release.
 - [ ] Document approval creates an electronic signature.
 - [ ] QMS objective and audit records can be created by a `qms.manage` user.
 - [ ] Supplier quality and calibration records can be created by a `supplier.manage` user.
+- [ ] Training assignments, records, and awareness acknowledgements can be created by a `training.manage` user.
 
 ## Security
 

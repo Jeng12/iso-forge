@@ -119,6 +119,31 @@ class Tenant extends Model
         return $this->hasMany(CalibrationRecord::class);
     }
 
+    public function trainingPrograms(): HasMany
+    {
+        return $this->hasMany(TrainingProgram::class);
+    }
+
+    public function competencyRequirements(): HasMany
+    {
+        return $this->hasMany(CompetencyRequirement::class);
+    }
+
+    public function trainingAssignments(): HasMany
+    {
+        return $this->hasMany(TrainingAssignment::class);
+    }
+
+    public function trainingRecords(): HasMany
+    {
+        return $this->hasMany(TrainingRecord::class);
+    }
+
+    public function awarenessAcknowledgements(): HasMany
+    {
+        return $this->hasMany(AwarenessAcknowledgement::class);
+    }
+
     public function correctiveActions(): HasMany
     {
         return $this->hasMany(CorrectiveAction::class);

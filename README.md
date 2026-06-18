@@ -1,6 +1,6 @@
 # ISO-Forge
 
-ISO-Forge is a Laravel prototype for a developer-centric ISO compliance framework. The current build follows the local project documents: multi-tenant data isolation, RBAC, document control, workflow tasks, ISO 9001 risk/CAPA records, ISO 22000 HACCP controls, supplier quality evidence, electronic signatures, and a hash-chained audit ledger.
+ISO-Forge is a Laravel prototype for a developer-centric ISO compliance framework. The current build follows the local project documents: multi-tenant data isolation, RBAC, document control, workflow tasks, ISO 9001 risk/CAPA records, ISO 22000 HACCP controls, supplier quality evidence, training competency evidence, electronic signatures, and a hash-chained audit ledger.
 
 ## Stack
 
@@ -39,6 +39,7 @@ Tenant: angkor-quality-foods
 - ISO 9001 risk register, nonconformance records, and corrective actions
 - ISO 22000 HACCP plans, hazard analysis, CCP/OPRP controls, PRPs, and monitoring records
 - Supplier approvals, evaluations, certificates, equipment assets, and calibration records
+- Training programs, competency requirements, assignments, completion records, and awareness acknowledgements
 - SHA-256 audit log chaining with `previous_hash`, `payload_hash`, and `entry_hash`
 - Dashboard for documents, approvals, risks, CAPA, tasks, and audit ledger
 - Sanctum-protected API routes with tenant access checks
@@ -105,6 +106,17 @@ Tenant: angkor-quality-foods
 - Supplier Quality browser tab for suppliers, evaluations, certificates, equipment, and calibration records
 - Supplier Quality API actions protected by `supplier.view` and `supplier.manage` permissions
 
+## Phase 9 Training And Competency
+
+- Training programs with ISO clause, delivery method, owner, and refresher interval
+- Role-based competency requirements linked to QMS/FSMS responsibilities
+- Training assignments with due dates and required role context
+- Training records with trainer, evidence document, score, result, and competency status
+- Failed competency checks automatically open CAPA for coaching and verification
+- Awareness acknowledgements linked to controlled documents and users
+- Training browser tab for programs, requirements, assignments, completion records, and awareness evidence
+- Training API actions protected by `training.view` and `training.manage` permissions
+
 ## API
 
 Authenticate:
@@ -161,6 +173,12 @@ Available tenant routes:
 - `POST /api/tenants/{tenant:slug}/supplier-quality/suppliers/{supplier}/certificates`
 - `POST /api/tenants/{tenant:slug}/supplier-quality/equipment`
 - `POST /api/tenants/{tenant:slug}/supplier-quality/equipment/{equipmentAsset}/calibrations`
+- `GET /api/tenants/{tenant:slug}/training`
+- `POST /api/tenants/{tenant:slug}/training/programs`
+- `POST /api/tenants/{tenant:slug}/training/requirements`
+- `POST /api/tenants/{tenant:slug}/training/programs/{trainingProgram}/assignments`
+- `POST /api/tenants/{tenant:slug}/training/assignments/{trainingAssignment}/records`
+- `POST /api/tenants/{tenant:slug}/training/awareness-acknowledgements`
 - `GET /api/tenants/{tenant:slug}/audit-logs`
 - `POST /api/tenants/{tenant:slug}/audit-logs`
 
@@ -173,7 +191,7 @@ npm audit
 npm run build
 ```
 
-Current status: 28 tests passing and npm audit clean.
+Current status: 32 tests passing and npm audit clean.
 
 ## Verification Command
 
@@ -184,7 +202,7 @@ php artisan iso-forge:verify-audit-chain
 Expected result:
 
 ```text
-Audit chain valid. Checked 17 entries; legacy entries: 0.
+Audit chain valid. Checked 22 entries; legacy entries: 0.
 ```
 
 ## Next Development Targets
@@ -192,4 +210,4 @@ Audit chain valid. Checked 17 entries; legacy entries: 0.
 - Add file upload/storage for controlled document versions
 - Add request classes/resources for stricter API contracts
 - Add edit screens and validation summaries for Phase 3 forms
-- Add training, competency, and awareness evidence linked to QMS roles
+- Add incident reporting and emergency-response evidence linked to FSMS controls

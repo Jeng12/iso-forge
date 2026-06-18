@@ -5,7 +5,9 @@ namespace Database\Seeders;
 use App\Models\Audit;
 use App\Models\AuditFinding;
 use App\Models\AuditLog;
+use App\Models\AwarenessAcknowledgement;
 use App\Models\CalibrationRecord;
+use App\Models\CompetencyRequirement;
 use App\Models\CorrectiveAction;
 use App\Models\CriticalControlPoint;
 use App\Models\Document;
@@ -29,6 +31,9 @@ use App\Models\Supplier;
 use App\Models\SupplierCertificate;
 use App\Models\SupplierEvaluation;
 use App\Models\Tenant;
+use App\Models\TrainingAssignment;
+use App\Models\TrainingProgram;
+use App\Models\TrainingRecord;
 use App\Models\User;
 use App\Models\Workflow;
 use App\Models\WorkflowInstance;
@@ -61,6 +66,8 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Manage FSMS module', 'slug' => 'fsms.manage'],
             ['name' => 'View supplier quality module', 'slug' => 'supplier.view'],
             ['name' => 'Manage supplier quality module', 'slug' => 'supplier.manage'],
+            ['name' => 'View training module', 'slug' => 'training.view'],
+            ['name' => 'Manage training module', 'slug' => 'training.manage'],
         ])->map(fn (array $permission) => Permission::create($permission));
 
         $adminRole = Role::create([
@@ -106,6 +113,8 @@ class DatabaseSeeder extends Seeder
             'fsms.manage',
             'supplier.view',
             'supplier.manage',
+            'training.view',
+            'training.manage',
         ])->pluck('id'));
         $auditorRole->permissions()->attach($permissions->whereIn('slug', [
             'document.view',
@@ -113,6 +122,7 @@ class DatabaseSeeder extends Seeder
             'qms.view',
             'fsms.view',
             'supplier.view',
+            'training.view',
         ])->pluck('id'));
         $operatorRole->permissions()->attach($permissions->whereIn('slug', [
             'document.view',
@@ -489,6 +499,65 @@ class DatabaseSeeder extends Seeder
             'notes' => 'Probe passed against traceable reference thermometer.',
         ]);
 
+        $trainingProgram = TrainingProgram::create([
+            'tenant_id' => $tenant->id,
+            'code' => 'TRN-CCP-001',
+            'title' => 'CCP Monitoring And Deviation Response',
+            'iso_clause' => 'ISO 22000:2018 7.2',
+            'delivery_method' => 'Practical demonstration',
+            'owner_id' => $joto->id,
+            'refresher_interval_days' => 365,
+            'status' => 'Active',
+            'description' => 'Operator competency for pasteurization CCP monitoring, evidence recording, and deviation escalation.',
+        ]);
+
+        $competencyRequirement = CompetencyRequirement::create([
+            'tenant_id' => $tenant->id,
+            'role_id' => $operatorRole->id,
+            'training_program_id' => $trainingProgram->id,
+            'competency_area' => 'Food-safety critical monitoring',
+            'required_level' => 'Qualified',
+            'assessment_method' => 'Supervisor observation and record review',
+            'due_within_days' => 14,
+            'is_mandatory' => true,
+        ]);
+
+        $trainingAssignment = TrainingAssignment::create([
+            'tenant_id' => $tenant->id,
+            'training_program_id' => $trainingProgram->id,
+            'user_id' => $jono->id,
+            'assigned_by_id' => $joto->id,
+            'required_for_role_id' => $operatorRole->id,
+            'due_date' => now()->addDays(14)->toDateString(),
+            'status' => 'Completed',
+            'notes' => 'Assigned because JoNo monitors the pasteurization CCP.',
+        ]);
+
+        $trainingRecord = TrainingRecord::create([
+            'tenant_id' => $tenant->id,
+            'training_assignment_id' => $trainingAssignment->id,
+            'training_program_id' => $trainingProgram->id,
+            'user_id' => $jono->id,
+            'trainer_id' => $joto->id,
+            'evidence_document_id' => $pendingProcedure->id,
+            'completed_at' => now()->subDays(2)->toDateString(),
+            'score' => 94,
+            'result' => 'Pass',
+            'competency_status' => 'Competent',
+            'expires_at' => now()->addYear()->toDateString(),
+            'notes' => 'Observed correct CCP reading, documentation, and escalation decision.',
+        ]);
+
+        $awarenessAcknowledgement = AwarenessAcknowledgement::create([
+            'tenant_id' => $tenant->id,
+            'document_id' => $pendingProcedure->id,
+            'user_id' => $jono->id,
+            'acknowledged_by_id' => $jono->id,
+            'acknowledged_at' => now()->subDay(),
+            'status' => 'Acknowledged',
+            'statement' => 'Reviewed CCP Temperature Monitoring Work Instruction draft and understood escalation expectations.',
+        ]);
+
         $workflow = Workflow::create([
             'tenant_id' => $tenant->id,
             'name' => 'CAPA Workflow',
@@ -617,6 +686,31 @@ class DatabaseSeeder extends Seeder
         AuditLog::appendFor($tenant->id, $jono->id, 'supplier_quality.calibration.created', CalibrationRecord::class, $calibrationRecord->id, [], [
             'result' => $calibrationRecord->result,
             'due_at' => $calibrationRecord->due_at?->toDateString(),
+        ]);
+
+        AuditLog::appendFor($tenant->id, $joto->id, 'training.program.created', TrainingProgram::class, $trainingProgram->id, [], [
+            'code' => $trainingProgram->code,
+            'title' => $trainingProgram->title,
+        ]);
+
+        AuditLog::appendFor($tenant->id, $joto->id, 'training.requirement.created', CompetencyRequirement::class, $competencyRequirement->id, [], [
+            'competency_area' => $competencyRequirement->competency_area,
+            'role_id' => $competencyRequirement->role_id,
+        ]);
+
+        AuditLog::appendFor($tenant->id, $joto->id, 'training.assignment.created', TrainingAssignment::class, $trainingAssignment->id, [], [
+            'user_id' => $trainingAssignment->user_id,
+            'due_date' => $trainingAssignment->due_date?->toDateString(),
+        ]);
+
+        AuditLog::appendFor($tenant->id, $joto->id, 'training.record.created', TrainingRecord::class, $trainingRecord->id, [], [
+            'result' => $trainingRecord->result,
+            'competency_status' => $trainingRecord->competency_status,
+        ]);
+
+        AuditLog::appendFor($tenant->id, $jono->id, 'training.awareness.created', AwarenessAcknowledgement::class, $awarenessAcknowledgement->id, [], [
+            'document_id' => $awarenessAcknowledgement->document_id,
+            'status' => $awarenessAcknowledgement->status,
         ]);
     }
 }

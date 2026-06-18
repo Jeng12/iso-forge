@@ -31,6 +31,14 @@ if (root) {
             equipment_assets: [],
             calibration_records: [],
         },
+        training: {
+            programs: [],
+            requirements: [],
+            assignments: [],
+            records: [],
+            awareness_acknowledgements: [],
+            roles: [],
+        },
         correctiveActions: [],
         tasks: [],
         auditLogs: [],
@@ -72,6 +80,18 @@ if (root) {
         supplierQualityCertificatesList: document.getElementById('supplier-quality-certificates-list'),
         supplierQualitySupplierSelect: document.getElementById('supplier-quality-supplier-select'),
         supplierQualityEquipmentSelect: document.getElementById('supplier-quality-equipment-select'),
+        trainingProgramsBody: document.getElementById('training-programs-body'),
+        trainingAssignmentsList: document.getElementById('training-assignments-list'),
+        trainingRecordsList: document.getElementById('training-records-list'),
+        trainingRequirementsList: document.getElementById('training-requirements-list'),
+        trainingAwarenessList: document.getElementById('training-awareness-list'),
+        trainingProgramSelect: document.getElementById('training-program-select'),
+        trainingRoleSelect: document.getElementById('training-role-select'),
+        trainingAssignmentSelect: document.getElementById('training-assignment-select'),
+        trainingEvidenceDocumentSelect: document.getElementById('training-evidence-document-select'),
+        trainingRequirementRoleSelect: document.getElementById('training-requirement-role-select'),
+        trainingRequirementProgramSelect: document.getElementById('training-requirement-program-select'),
+        trainingAwarenessDocumentSelect: document.getElementById('training-awareness-document-select'),
         objectiveForm: document.getElementById('objective-form'),
         auditForm: document.getElementById('audit-form'),
         haccpPlanForm: document.getElementById('haccp-plan-form'),
@@ -80,6 +100,11 @@ if (root) {
         supplierEvaluationForm: document.getElementById('supplier-evaluation-form'),
         equipmentForm: document.getElementById('equipment-form'),
         calibrationForm: document.getElementById('calibration-form'),
+        trainingProgramForm: document.getElementById('training-program-form'),
+        trainingRequirementForm: document.getElementById('training-requirement-form'),
+        trainingAssignmentForm: document.getElementById('training-assignment-form'),
+        trainingRecordForm: document.getElementById('training-record-form'),
+        trainingAwarenessForm: document.getElementById('training-awareness-form'),
         capaForm: document.getElementById('capa-form'),
     };
 
@@ -140,11 +165,11 @@ if (root) {
     };
 
     const renderStatusBadge = (status) => {
-        const color = status === 'Approved' || status === 'Completed' || status === 'Verified' || status === 'Active' || status === 'Pass' || status === 'Current'
+        const color = status === 'Approved' || status === 'Completed' || status === 'Verified' || status === 'Active' || status === 'Pass' || status === 'Current' || status === 'Competent' || status === 'Acknowledged'
             ? 'bg-emerald-100 text-emerald-800'
             : status === 'Deviation' || status === 'Rejected' || status === 'Fail' || status === 'Overdue' || status === 'Expired' || status === 'Hold'
                 ? 'bg-red-100 text-red-800'
-            : status === 'Pending' || status === 'Waiting' || status === 'Under Review' || status === 'Conditional' || status === 'Expiring' || status === 'Adjusted'
+            : status === 'Pending' || status === 'Waiting' || status === 'Under Review' || status === 'Conditional' || status === 'Expiring' || status === 'Adjusted' || status === 'Assigned' || status === 'Needs Coaching'
                 ? 'bg-amber-100 text-amber-800'
                 : 'bg-sky-100 text-sky-800';
 
@@ -178,6 +203,10 @@ if (root) {
             ['Certs Expiring', metrics.supplier_certificates_expiring ?? 0],
             ['Critical Equipment', metrics.critical_equipment ?? 0],
             ['Calibrations Due', metrics.calibrations_due ?? 0],
+            ['Training Programs', metrics.training_programs ?? 0],
+            ['Open Training', metrics.open_training_assignments ?? 0],
+            ['Competent Records', metrics.competent_records ?? 0],
+            ['Awareness', metrics.awareness_acknowledgements ?? 0],
             ['Audit Events', metrics.audit_events ?? 0],
         ];
 
@@ -462,6 +491,90 @@ if (root) {
         `).join('') || '<div class="p-4 text-sm text-zinc-500">No supplier certificates found.</div>';
     };
 
+    const renderTraining = () => {
+        const programOptions = (state.training.programs ?? []).map((program) => {
+            return `<option value="${program.id}">${escapeHtml(program.code)} - ${escapeHtml(program.title)}</option>`;
+        }).join('');
+        const roleOptions = (state.training.roles ?? []).map((role) => {
+            return `<option value="${role.id}">${escapeHtml(role.name)}</option>`;
+        }).join('');
+        const assignmentOptions = (state.training.assignments ?? []).map((assignment) => {
+            return `<option value="${assignment.id}">${escapeHtml(assignment.user?.name)} - ${escapeHtml(assignment.training_program?.code)} - ${escapeHtml(assignment.status)}</option>`;
+        }).join('');
+        const documentOptions = state.documents.map((document) => {
+            return `<option value="${document.id}">${escapeHtml(document.document_number)} - ${escapeHtml(document.title)}</option>`;
+        }).join('');
+
+        els.trainingProgramSelect.innerHTML = programOptions;
+        els.trainingRequirementProgramSelect.innerHTML = programOptions;
+        els.trainingRoleSelect.innerHTML = roleOptions;
+        els.trainingRequirementRoleSelect.innerHTML = roleOptions;
+        els.trainingAssignmentSelect.innerHTML = assignmentOptions;
+        els.trainingEvidenceDocumentSelect.innerHTML = `<option value="">No evidence document</option>${documentOptions}`;
+        els.trainingAwarenessDocumentSelect.innerHTML = documentOptions;
+
+        els.trainingProgramsBody.innerHTML = (state.training.programs ?? []).map((program) => `
+            <tr>
+                <td class="min-w-72 px-4 py-3">
+                    <div class="font-medium">${escapeHtml(program.code)}</div>
+                    <div class="mt-1 text-xs font-medium text-zinc-500">${escapeHtml(program.title)}</div>
+                </td>
+                <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml(program.iso_clause ?? '-')}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml(program.owner?.name)}</td>
+                <td class="whitespace-nowrap px-4 py-3">${renderStatusBadge(program.status)}</td>
+            </tr>
+        `).join('');
+
+        els.trainingAssignmentsList.innerHTML = (state.training.assignments ?? []).map((assignment) => `
+            <div class="p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <div class="font-medium">${escapeHtml(assignment.user?.name)} - ${escapeHtml(assignment.training_program?.title)}</div>
+                        <div class="mt-1 text-sm text-zinc-600">${escapeHtml(assignment.required_for_role?.name ?? 'Role optional')} - due ${escapeHtml(assignment.due_date)}</div>
+                    </div>
+                    ${renderStatusBadge(assignment.status)}
+                </div>
+            </div>
+        `).join('') || '<div class="p-4 text-sm text-zinc-500">No training assignments found.</div>';
+
+        els.trainingRecordsList.innerHTML = (state.training.records ?? []).map((record) => `
+            <div class="p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <div class="font-medium">${escapeHtml(record.user?.name)} - ${escapeHtml(record.training_program?.title)}</div>
+                        <div class="mt-1 text-sm text-zinc-600">Score ${escapeHtml(record.score ?? '-')} - trainer ${escapeHtml(record.trainer?.name)}</div>
+                        <div class="mt-1 text-xs font-medium text-zinc-500">${escapeHtml(record.completed_at)}${record.corrective_action ? ` - ${escapeHtml(record.corrective_action.title)}` : ''}</div>
+                    </div>
+                    ${renderStatusBadge(record.competency_status)}
+                </div>
+            </div>
+        `).join('') || '<div class="p-4 text-sm text-zinc-500">No training records found.</div>';
+
+        els.trainingRequirementsList.innerHTML = (state.training.requirements ?? []).map((requirement) => `
+            <div class="p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <div class="font-medium">${escapeHtml(requirement.role?.name)} - ${escapeHtml(requirement.competency_area)}</div>
+                        <div class="mt-1 text-sm text-zinc-600">${escapeHtml(requirement.training_program?.title)} - ${escapeHtml(requirement.assessment_method)}</div>
+                    </div>
+                    ${renderStatusBadge(requirement.required_level)}
+                </div>
+            </div>
+        `).join('') || '<div class="p-4 text-sm text-zinc-500">No competency requirements found.</div>';
+
+        els.trainingAwarenessList.innerHTML = (state.training.awareness_acknowledgements ?? []).map((acknowledgement) => `
+            <div class="p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <div class="font-medium">${escapeHtml(acknowledgement.user?.name)} - ${escapeHtml(acknowledgement.document?.document_number)}</div>
+                        <div class="mt-1 text-sm text-zinc-600">${escapeHtml(acknowledgement.document?.title)}</div>
+                    </div>
+                    ${renderStatusBadge(acknowledgement.status)}
+                </div>
+            </div>
+        `).join('') || '<div class="p-4 text-sm text-zinc-500">No awareness acknowledgements found.</div>';
+    };
+
     const renderTasks = () => {
         const taskRows = state.tasks.map((task) => {
             const canComplete = task.status !== 'Completed'
@@ -509,6 +622,7 @@ if (root) {
         renderQms();
         renderFsms();
         renderSupplierQuality();
+        renderTraining();
         renderCapa();
         renderTasks();
         renderAudit();
@@ -537,6 +651,7 @@ if (root) {
             qms,
             fsms,
             supplierQuality,
+            training,
             correctiveActions,
             tasks,
             auditLogs,
@@ -549,6 +664,7 @@ if (root) {
             safeFetch(tenantPath('/qms'), { objectives: [], audits: [], findings: [], management_reviews: [] }),
             safeFetch(tenantPath('/fsms'), { haccp_plans: [], hazards: [], ccps: [], oprps: [], prps: [], monitoring_records: [] }),
             safeFetch(tenantPath('/supplier-quality'), { suppliers: [], evaluations: [], certificates: [], equipment_assets: [], calibration_records: [] }),
+            safeFetch(tenantPath('/training'), { programs: [], requirements: [], assignments: [], records: [], awareness_acknowledgements: [], roles: [] }),
             safeFetch(tenantPath('/corrective-actions')),
             safeFetch(tenantPath('/workflow-tasks')),
             safeFetch(tenantPath('/audit-logs')),
@@ -562,6 +678,7 @@ if (root) {
         state.qms = qms;
         state.fsms = fsms;
         state.supplierQuality = supplierQuality;
+        state.training = training;
         state.correctiveActions = correctiveActions;
         state.tasks = tasks;
         state.auditLogs = auditLogs;
@@ -903,6 +1020,149 @@ if (root) {
             els.calibrationForm.reset();
             await loadWorkspace();
             showStatus(result === 'Fail' || result === 'Overdue' ? 'Calibration CAPA opened.' : 'Calibration recorded.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.trainingProgramForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.trainingProgramForm);
+        const refresherDays = form.get('refresher_interval_days');
+
+        const payload = {
+            code: form.get('code'),
+            title: form.get('title'),
+            iso_clause: form.get('iso_clause') || null,
+            delivery_method: form.get('delivery_method') || 'Classroom',
+            owner_id: Number(form.get('owner_id')),
+            status: 'Active',
+        };
+
+        if (refresherDays !== '') {
+            payload.refresher_interval_days = Number(refresherDays);
+        }
+
+        try {
+            await api(tenantPath('/training/programs'), {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            });
+            els.trainingProgramForm.reset();
+            await loadWorkspace();
+            showStatus('Training program created.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.trainingRequirementForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.trainingRequirementForm);
+
+        try {
+            await api(tenantPath('/training/requirements'), {
+                method: 'POST',
+                body: JSON.stringify({
+                    role_id: Number(form.get('role_id')),
+                    training_program_id: Number(form.get('training_program_id')),
+                    competency_area: form.get('competency_area'),
+                    required_level: form.get('required_level') || 'Qualified',
+                    assessment_method: form.get('assessment_method') || 'Supervisor verification',
+                    due_within_days: Number(form.get('due_within_days') || 30),
+                    is_mandatory: true,
+                }),
+            });
+            els.trainingRequirementForm.reset();
+            await loadWorkspace();
+            showStatus('Competency requirement created.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.trainingAssignmentForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.trainingAssignmentForm);
+        const programId = Number(form.get('training_program_id'));
+
+        try {
+            await api(tenantPath(`/training/programs/${programId}/assignments`), {
+                method: 'POST',
+                body: JSON.stringify({
+                    user_id: Number(form.get('user_id')),
+                    assigned_by_id: state.user?.id,
+                    required_for_role_id: Number(form.get('required_for_role_id')),
+                    due_date: form.get('due_date'),
+                    notes: form.get('notes') || null,
+                }),
+            });
+            els.trainingAssignmentForm.reset();
+            await loadWorkspace();
+            showStatus('Training assignment created.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.trainingRecordForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.trainingRecordForm);
+        const assignmentId = Number(form.get('training_assignment_id'));
+        const score = form.get('score');
+        const evidenceDocumentId = form.get('evidence_document_id');
+
+        const payload = {
+            trainer_id: Number(form.get('trainer_id')),
+            completed_at: form.get('completed_at'),
+            result: form.get('result'),
+            competency_status: form.get('competency_status'),
+            expires_at: form.get('expires_at') || null,
+            notes: form.get('notes') || null,
+        };
+
+        if (score !== '') {
+            payload.score = Number(score);
+        }
+
+        if (evidenceDocumentId) {
+            payload.evidence_document_id = Number(evidenceDocumentId);
+        }
+
+        try {
+            await api(tenantPath(`/training/assignments/${assignmentId}/records`), {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            });
+            els.trainingRecordForm.reset();
+            await loadWorkspace();
+            showStatus(payload.result === 'Fail' || payload.competency_status === 'Needs Coaching' ? 'Competency CAPA opened.' : 'Training record created.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.trainingAwarenessForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.trainingAwarenessForm);
+        const acknowledgedAt = form.get('acknowledged_at')
+            ? new Date(form.get('acknowledged_at')).toISOString()
+            : new Date().toISOString();
+
+        try {
+            await api(tenantPath('/training/awareness-acknowledgements'), {
+                method: 'POST',
+                body: JSON.stringify({
+                    document_id: Number(form.get('document_id')),
+                    user_id: Number(form.get('user_id')),
+                    acknowledged_by_id: state.user?.id,
+                    acknowledged_at: acknowledgedAt,
+                    statement: form.get('statement') || null,
+                }),
+            });
+            els.trainingAwarenessForm.reset();
+            await loadWorkspace();
+            showStatus('Awareness acknowledgement recorded.');
         } catch (error) {
             showStatus(error.message, 'error');
         }
