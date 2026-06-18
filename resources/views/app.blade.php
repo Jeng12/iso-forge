@@ -50,6 +50,7 @@
                     <button data-tab="risks" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">Risks</button>
                     <button data-tab="qms" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">QMS</button>
                     <button data-tab="fsms" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">FSMS</button>
+                    <button data-tab="supplier-quality" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">Suppliers</button>
                     <button data-tab="capa" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">CAPA</button>
                     <button data-tab="audit" class="tab-button block rounded-lg px-3 py-2 text-left text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 lg:w-full">Audit</button>
                 </nav>
@@ -405,6 +406,144 @@
                                 <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Prerequisite Programs</h3>
                             </div>
                             <div id="fsms-prps-list" class="divide-y divide-zinc-100"></div>
+                        </section>
+                    </section>
+
+                    <section data-panel="supplier-quality" class="panel hidden space-y-6">
+                        <div class="grid gap-6 xl:grid-cols-[1fr_360px]">
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Approved Supplier List</h3>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-zinc-200 text-left text-sm">
+                                        <thead class="bg-zinc-50 text-xs font-semibold uppercase tracking-normal text-zinc-500">
+                                            <tr>
+                                                <th class="px-4 py-3">Supplier</th>
+                                                <th class="px-4 py-3">Category</th>
+                                                <th class="px-4 py-3">Risk</th>
+                                                <th class="px-4 py-3">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="supplier-quality-suppliers-body" class="divide-y divide-zinc-100"></tbody>
+                                    </table>
+                                </div>
+                            </section>
+
+                            <form id="supplier-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">New Supplier</h3>
+                                <div class="space-y-3">
+                                    <input name="name" required placeholder="Supplier name" class="form-input">
+                                    <input name="supplier_code" required placeholder="Supplier code" class="form-input">
+                                    <input name="category" required placeholder="Category" class="form-input">
+                                    <input name="contact_email" type="email" placeholder="Contact email" class="form-input">
+                                    <select name="owner_id" class="form-input user-select"></select>
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Create</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="grid gap-6 xl:grid-cols-[1fr_360px]">
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Equipment Assets</h3>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-zinc-200 text-left text-sm">
+                                        <thead class="bg-zinc-50 text-xs font-semibold uppercase tracking-normal text-zinc-500">
+                                            <tr>
+                                                <th class="px-4 py-3">Asset</th>
+                                                <th class="px-4 py-3">Location</th>
+                                                <th class="px-4 py-3">Next Due</th>
+                                                <th class="px-4 py-3">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="supplier-quality-equipment-body" class="divide-y divide-zinc-100"></tbody>
+                                    </table>
+                                </div>
+                            </section>
+
+                            <form id="equipment-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">New Equipment</h3>
+                                <div class="space-y-3">
+                                    <input name="asset_tag" required placeholder="Asset tag" class="form-input">
+                                    <input name="name" required placeholder="Equipment name" class="form-input">
+                                    <input name="location" required placeholder="Location" class="form-input">
+                                    <select name="owner_id" class="form-input user-select"></select>
+                                    <input name="calibration_interval_days" type="number" min="1" value="180" class="form-input">
+                                    <label class="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-700">
+                                        <input name="critical_to_food_safety" type="checkbox" class="size-4 rounded border-zinc-300 text-emerald-700 focus:ring-emerald-600">
+                                        Food-safety critical
+                                    </label>
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Create</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="grid gap-6 xl:grid-cols-2">
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Supplier Evaluations</h3>
+                                </div>
+                                <div id="supplier-quality-evaluations-list" class="divide-y divide-zinc-100"></div>
+                            </section>
+
+                            <form id="supplier-evaluation-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">New Evaluation</h3>
+                                <div class="space-y-3">
+                                    <select id="supplier-quality-supplier-select" name="supplier_id" required class="form-input"></select>
+                                    <select name="evaluated_by_id" class="form-input user-select"></select>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input name="score" required type="number" min="0" max="100" value="85" class="form-input">
+                                        <select name="result" class="form-input">
+                                            <option>Approved</option>
+                                            <option>Conditional</option>
+                                            <option>Rejected</option>
+                                        </select>
+                                    </div>
+                                    <input name="evaluation_date" required type="date" class="form-input">
+                                    <input name="next_review_date" type="date" class="form-input">
+                                    <textarea name="notes" placeholder="Notes" class="form-input min-h-20"></textarea>
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Record</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="grid gap-6 xl:grid-cols-2">
+                            <section class="rounded-lg border border-zinc-200 bg-white">
+                                <div class="border-b border-zinc-200 px-4 py-3">
+                                    <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Calibration Records</h3>
+                                </div>
+                                <div id="supplier-quality-calibrations-list" class="divide-y divide-zinc-100"></div>
+                            </section>
+
+                            <form id="calibration-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">New Calibration</h3>
+                                <div class="space-y-3">
+                                    <select id="supplier-quality-equipment-select" name="equipment_asset_id" required class="form-input"></select>
+                                    <select name="performed_by_id" class="form-input user-select"></select>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input name="performed_at" required type="date" class="form-input">
+                                        <input name="due_at" required type="date" class="form-input">
+                                    </div>
+                                    <select name="result" class="form-input">
+                                        <option>Pass</option>
+                                        <option>Adjusted</option>
+                                        <option>Fail</option>
+                                        <option>Overdue</option>
+                                    </select>
+                                    <input name="certificate_number" placeholder="Certificate number" class="form-input">
+                                    <textarea name="notes" placeholder="Notes" class="form-input min-h-20"></textarea>
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Record</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <section class="rounded-lg border border-zinc-200 bg-white">
+                            <div class="border-b border-zinc-200 px-4 py-3">
+                                <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Supplier Certificates</h3>
+                            </div>
+                            <div id="supplier-quality-certificates-list" class="divide-y divide-zinc-100"></div>
                         </section>
                     </section>
 

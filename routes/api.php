@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\FsmsController;
 use App\Http\Controllers\Api\IsoForgeController;
 use App\Http\Controllers\Api\QmsController;
 use App\Http\Controllers\Api\RiskController;
+use App\Http\Controllers\Api\SupplierQualityController;
 use App\Http\Controllers\Api\WorkflowTaskController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -60,6 +61,13 @@ Route::middleware('auth:sanctum')->group(function (): void {
             Route::post('/fsms/hazards/{hazardAnalysis}/oprps', [FsmsController::class, 'storeOprp'])->middleware('permission:fsms.manage');
             Route::post('/fsms/prps', [FsmsController::class, 'storePrp'])->middleware('permission:fsms.manage');
             Route::post('/fsms/monitoring-records', [FsmsController::class, 'storeMonitoringRecord'])->middleware('permission:fsms.manage');
+
+            Route::get('/supplier-quality', [SupplierQualityController::class, 'overview'])->middleware('permission:supplier.view,supplier.manage');
+            Route::post('/supplier-quality/suppliers', [SupplierQualityController::class, 'storeSupplier'])->middleware('permission:supplier.manage');
+            Route::post('/supplier-quality/suppliers/{supplier}/evaluations', [SupplierQualityController::class, 'storeEvaluation'])->middleware('permission:supplier.manage');
+            Route::post('/supplier-quality/suppliers/{supplier}/certificates', [SupplierQualityController::class, 'storeCertificate'])->middleware('permission:supplier.manage');
+            Route::post('/supplier-quality/equipment', [SupplierQualityController::class, 'storeEquipment'])->middleware('permission:supplier.manage');
+            Route::post('/supplier-quality/equipment/{equipmentAsset}/calibrations', [SupplierQualityController::class, 'storeCalibration'])->middleware('permission:supplier.manage');
 
             Route::get('/audit-logs', [IsoForgeController::class, 'auditLogs'])->middleware('permission:audit.view');
             Route::post('/audit-logs', [IsoForgeController::class, 'storeAuditLog'])->middleware('permission:audit.view');

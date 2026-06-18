@@ -23,6 +23,7 @@ Use this checklist before tagging or deploying a release.
 - [ ] Tenant snapshot endpoint returns metrics.
 - [ ] Document approval creates an electronic signature.
 - [ ] QMS objective and audit records can be created by a `qms.manage` user.
+- [ ] Supplier quality and calibration records can be created by a `supplier.manage` user.
 
 ## Security
 

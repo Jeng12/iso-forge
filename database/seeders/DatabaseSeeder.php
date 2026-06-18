@@ -5,12 +5,14 @@ namespace Database\Seeders;
 use App\Models\Audit;
 use App\Models\AuditFinding;
 use App\Models\AuditLog;
+use App\Models\CalibrationRecord;
 use App\Models\CorrectiveAction;
 use App\Models\CriticalControlPoint;
 use App\Models\Document;
 use App\Models\DocumentApproval;
 use App\Models\DocumentVersion;
 use App\Models\ElectronicSignature;
+use App\Models\EquipmentAsset;
 use App\Models\HaccpPlan;
 use App\Models\HazardAnalysis;
 use App\Models\ManagementReview;
@@ -23,6 +25,9 @@ use App\Models\ProcessStep;
 use App\Models\QualityObjective;
 use App\Models\Risk;
 use App\Models\Role;
+use App\Models\Supplier;
+use App\Models\SupplierCertificate;
+use App\Models\SupplierEvaluation;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Workflow;
@@ -54,6 +59,8 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Manage QMS module', 'slug' => 'qms.manage'],
             ['name' => 'View FSMS module', 'slug' => 'fsms.view'],
             ['name' => 'Manage FSMS module', 'slug' => 'fsms.manage'],
+            ['name' => 'View supplier quality module', 'slug' => 'supplier.view'],
+            ['name' => 'Manage supplier quality module', 'slug' => 'supplier.manage'],
         ])->map(fn (array $permission) => Permission::create($permission));
 
         $adminRole = Role::create([
@@ -97,12 +104,15 @@ class DatabaseSeeder extends Seeder
             'qms.manage',
             'fsms.view',
             'fsms.manage',
+            'supplier.view',
+            'supplier.manage',
         ])->pluck('id'));
         $auditorRole->permissions()->attach($permissions->whereIn('slug', [
             'document.view',
             'audit.view',
             'qms.view',
             'fsms.view',
+            'supplier.view',
         ])->pluck('id'));
         $operatorRole->permissions()->attach($permissions->whereIn('slug', [
             'document.view',
@@ -416,6 +426,69 @@ class DatabaseSeeder extends Seeder
             'notes' => 'Batch MJ-260618-01 remained above the validated critical limit.',
         ]);
 
+        $supplier = Supplier::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Kampot Mango Cooperative',
+            'supplier_code' => 'SUP-MANGO-01',
+            'category' => 'Raw fruit supplier',
+            'contact_email' => 'quality@kampot-mango.example',
+            'approval_status' => 'Approved',
+            'risk_level' => 'Medium',
+            'approved_until' => now()->addYear()->toDateString(),
+            'owner_id' => $joto->id,
+            'risk_id' => $supplierRisk->id,
+            'notes' => 'Approved for mango pulp supply with annual certificate and field-audit review.',
+        ]);
+
+        $supplierEvaluation = SupplierEvaluation::create([
+            'tenant_id' => $tenant->id,
+            'supplier_id' => $supplier->id,
+            'evaluated_by_id' => $joto->id,
+            'evaluation_date' => now()->subDays(15)->toDateString(),
+            'score' => 86,
+            'result' => 'Approved',
+            'next_review_date' => now()->addYear()->toDateString(),
+            'evidence_document_id' => $sop->id,
+            'notes' => 'Supplier approval remains valid with certificate expiry tracked in the evidence register.',
+        ]);
+
+        $supplierCertificate = SupplierCertificate::create([
+            'tenant_id' => $tenant->id,
+            'supplier_id' => $supplier->id,
+            'document_id' => $sop->id,
+            'certificate_type' => 'Supplier food safety certificate',
+            'certificate_number' => 'KMC-FSMS-2026',
+            'issued_at' => now()->subMonths(5)->toDateString(),
+            'expires_at' => now()->addMonths(7)->toDateString(),
+            'status' => 'Current',
+        ]);
+
+        $equipmentAsset = EquipmentAsset::create([
+            'tenant_id' => $tenant->id,
+            'asset_tag' => 'PAST-THERM-01',
+            'name' => 'Pasteurizer temperature probe',
+            'location' => 'Juice line 1',
+            'owner_id' => $jono->id,
+            'calibration_interval_days' => 180,
+            'critical_to_food_safety' => true,
+            'last_calibrated_at' => now()->subDays(20)->toDateString(),
+            'next_calibration_due_at' => now()->addDays(160)->toDateString(),
+            'status' => 'Active',
+            'notes' => 'Food-safety critical probe used for pasteurization CCP evidence.',
+        ]);
+
+        $calibrationRecord = CalibrationRecord::create([
+            'tenant_id' => $tenant->id,
+            'equipment_asset_id' => $equipmentAsset->id,
+            'performed_by_id' => $jono->id,
+            'evidence_document_id' => $pendingProcedure->id,
+            'performed_at' => now()->subDays(20)->toDateString(),
+            'due_at' => now()->addDays(160)->toDateString(),
+            'result' => 'Pass',
+            'certificate_number' => 'CAL-PAST-2606',
+            'notes' => 'Probe passed against traceable reference thermometer.',
+        ]);
+
         $workflow = Workflow::create([
             'tenant_id' => $tenant->id,
             'name' => 'CAPA Workflow',
@@ -519,6 +592,31 @@ class DatabaseSeeder extends Seeder
         AuditLog::appendFor($tenant->id, $jono->id, 'fsms.monitoring_record.created', MonitoringRecord::class, $monitoringRecord->id, [], [
             'result' => $monitoringRecord->result,
             'is_deviation' => $monitoringRecord->is_deviation,
+        ]);
+
+        AuditLog::appendFor($tenant->id, $joto->id, 'supplier_quality.supplier.created', Supplier::class, $supplier->id, [], [
+            'supplier_code' => $supplier->supplier_code,
+            'approval_status' => $supplier->approval_status,
+        ]);
+
+        AuditLog::appendFor($tenant->id, $joto->id, 'supplier_quality.evaluation.created', SupplierEvaluation::class, $supplierEvaluation->id, [], [
+            'score' => $supplierEvaluation->score,
+            'result' => $supplierEvaluation->result,
+        ]);
+
+        AuditLog::appendFor($tenant->id, $joto->id, 'supplier_quality.certificate.created', SupplierCertificate::class, $supplierCertificate->id, [], [
+            'certificate_type' => $supplierCertificate->certificate_type,
+            'expires_at' => $supplierCertificate->expires_at?->toDateString(),
+        ]);
+
+        AuditLog::appendFor($tenant->id, $jono->id, 'supplier_quality.equipment.created', EquipmentAsset::class, $equipmentAsset->id, [], [
+            'asset_tag' => $equipmentAsset->asset_tag,
+            'critical_to_food_safety' => $equipmentAsset->critical_to_food_safety,
+        ]);
+
+        AuditLog::appendFor($tenant->id, $jono->id, 'supplier_quality.calibration.created', CalibrationRecord::class, $calibrationRecord->id, [], [
+            'result' => $calibrationRecord->result,
+            'due_at' => $calibrationRecord->due_at?->toDateString(),
         ]);
     }
 }

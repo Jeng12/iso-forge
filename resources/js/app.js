@@ -24,6 +24,13 @@ if (root) {
             prps: [],
             monitoring_records: [],
         },
+        supplierQuality: {
+            suppliers: [],
+            evaluations: [],
+            certificates: [],
+            equipment_assets: [],
+            calibration_records: [],
+        },
         correctiveActions: [],
         tasks: [],
         auditLogs: [],
@@ -58,10 +65,21 @@ if (root) {
         fsmsMonitoringList: document.getElementById('fsms-monitoring-list'),
         fsmsPrpsList: document.getElementById('fsms-prps-list'),
         fsmsMonitorableSelect: document.getElementById('fsms-monitorable-select'),
+        supplierQualitySuppliersBody: document.getElementById('supplier-quality-suppliers-body'),
+        supplierQualityEquipmentBody: document.getElementById('supplier-quality-equipment-body'),
+        supplierQualityEvaluationsList: document.getElementById('supplier-quality-evaluations-list'),
+        supplierQualityCalibrationsList: document.getElementById('supplier-quality-calibrations-list'),
+        supplierQualityCertificatesList: document.getElementById('supplier-quality-certificates-list'),
+        supplierQualitySupplierSelect: document.getElementById('supplier-quality-supplier-select'),
+        supplierQualityEquipmentSelect: document.getElementById('supplier-quality-equipment-select'),
         objectiveForm: document.getElementById('objective-form'),
         auditForm: document.getElementById('audit-form'),
         haccpPlanForm: document.getElementById('haccp-plan-form'),
         monitoringForm: document.getElementById('monitoring-form'),
+        supplierForm: document.getElementById('supplier-form'),
+        supplierEvaluationForm: document.getElementById('supplier-evaluation-form'),
+        equipmentForm: document.getElementById('equipment-form'),
+        calibrationForm: document.getElementById('calibration-form'),
         capaForm: document.getElementById('capa-form'),
     };
 
@@ -122,11 +140,11 @@ if (root) {
     };
 
     const renderStatusBadge = (status) => {
-        const color = status === 'Approved' || status === 'Completed' || status === 'Verified' || status === 'Active' || status === 'Pass'
+        const color = status === 'Approved' || status === 'Completed' || status === 'Verified' || status === 'Active' || status === 'Pass' || status === 'Current'
             ? 'bg-emerald-100 text-emerald-800'
-            : status === 'Deviation'
+            : status === 'Deviation' || status === 'Rejected' || status === 'Fail' || status === 'Overdue' || status === 'Expired' || status === 'Hold'
                 ? 'bg-red-100 text-red-800'
-            : status === 'Pending' || status === 'Waiting' || status === 'Under Review'
+            : status === 'Pending' || status === 'Waiting' || status === 'Under Review' || status === 'Conditional' || status === 'Expiring' || status === 'Adjusted'
                 ? 'bg-amber-100 text-amber-800'
                 : 'bg-sky-100 text-sky-800';
 
@@ -156,6 +174,10 @@ if (root) {
             ['HACCP Plans', metrics.haccp_plans ?? 0],
             ['Active CCPs', metrics.active_ccps ?? 0],
             ['FSMS Deviations', metrics.fsms_deviations ?? 0],
+            ['Approved Suppliers', metrics.approved_suppliers ?? 0],
+            ['Certs Expiring', metrics.supplier_certificates_expiring ?? 0],
+            ['Critical Equipment', metrics.critical_equipment ?? 0],
+            ['Calibrations Due', metrics.calibrations_due ?? 0],
             ['Audit Events', metrics.audit_events ?? 0],
         ];
 
@@ -369,6 +391,77 @@ if (root) {
         `).join('') || '<div class="p-4 text-sm text-zinc-500">No prerequisite programs found.</div>';
     };
 
+    const renderSupplierQuality = () => {
+        els.supplierQualitySuppliersBody.innerHTML = (state.supplierQuality.suppliers ?? []).map((supplier) => `
+            <tr>
+                <td class="min-w-72 px-4 py-3">
+                    <div class="font-medium">${escapeHtml(supplier.name)}</div>
+                    <div class="mt-1 text-xs font-medium text-zinc-500">${escapeHtml(supplier.supplier_code)} - ${escapeHtml(supplier.owner?.name)}</div>
+                </td>
+                <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml(supplier.category)}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml(supplier.risk_level)}</td>
+                <td class="whitespace-nowrap px-4 py-3">${renderStatusBadge(supplier.approval_status)}</td>
+            </tr>
+        `).join('');
+
+        els.supplierQualitySupplierSelect.innerHTML = (state.supplierQuality.suppliers ?? []).map((supplier) => {
+            return `<option value="${supplier.id}">${escapeHtml(supplier.supplier_code)} - ${escapeHtml(supplier.name)}</option>`;
+        }).join('');
+
+        els.supplierQualityEquipmentBody.innerHTML = (state.supplierQuality.equipment_assets ?? []).map((asset) => `
+            <tr>
+                <td class="min-w-72 px-4 py-3">
+                    <div class="font-medium">${escapeHtml(asset.asset_tag)}</div>
+                    <div class="mt-1 text-xs font-medium text-zinc-500">${escapeHtml(asset.name)}${asset.critical_to_food_safety ? ' - Critical' : ''}</div>
+                </td>
+                <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml(asset.location)}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-zinc-600">${escapeHtml(asset.next_calibration_due_at ?? '-')}</td>
+                <td class="whitespace-nowrap px-4 py-3">${renderStatusBadge(asset.status)}</td>
+            </tr>
+        `).join('');
+
+        els.supplierQualityEquipmentSelect.innerHTML = (state.supplierQuality.equipment_assets ?? []).map((asset) => {
+            return `<option value="${asset.id}">${escapeHtml(asset.asset_tag)} - ${escapeHtml(asset.name)}</option>`;
+        }).join('');
+
+        els.supplierQualityEvaluationsList.innerHTML = (state.supplierQuality.evaluations ?? []).map((evaluation) => `
+            <div class="p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <div class="font-medium">${escapeHtml(evaluation.supplier?.name)} - score ${escapeHtml(evaluation.score)}</div>
+                        <div class="mt-1 text-sm text-zinc-600">${escapeHtml(evaluation.evaluator?.name)} - next review ${escapeHtml(evaluation.next_review_date ?? '-')}</div>
+                    </div>
+                    ${renderStatusBadge(evaluation.result)}
+                </div>
+            </div>
+        `).join('') || '<div class="p-4 text-sm text-zinc-500">No supplier evaluations found.</div>';
+
+        els.supplierQualityCalibrationsList.innerHTML = (state.supplierQuality.calibration_records ?? []).map((record) => `
+            <div class="p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <div class="font-medium">${escapeHtml(record.equipment_asset?.asset_tag)} - ${escapeHtml(record.equipment_asset?.name)}</div>
+                        <div class="mt-1 text-sm text-zinc-600">${escapeHtml(record.performed_at)} - next due ${escapeHtml(record.due_at)}</div>
+                        <div class="mt-1 text-xs font-medium text-zinc-500">${escapeHtml(record.performer?.name)}${record.corrective_action ? ` - ${escapeHtml(record.corrective_action.title)}` : ''}</div>
+                    </div>
+                    ${renderStatusBadge(record.result)}
+                </div>
+            </div>
+        `).join('') || '<div class="p-4 text-sm text-zinc-500">No calibration records found.</div>';
+
+        els.supplierQualityCertificatesList.innerHTML = (state.supplierQuality.certificates ?? []).map((certificate) => `
+            <div class="p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <div class="font-medium">${escapeHtml(certificate.supplier?.name)} - ${escapeHtml(certificate.certificate_type)}</div>
+                        <div class="mt-1 text-sm text-zinc-600">${escapeHtml(certificate.certificate_number)} - expires ${escapeHtml(certificate.expires_at)}</div>
+                    </div>
+                    ${renderStatusBadge(certificate.status)}
+                </div>
+            </div>
+        `).join('') || '<div class="p-4 text-sm text-zinc-500">No supplier certificates found.</div>';
+    };
+
     const renderTasks = () => {
         const taskRows = state.tasks.map((task) => {
             const canComplete = task.status !== 'Completed'
@@ -415,6 +508,7 @@ if (root) {
         renderRisks();
         renderQms();
         renderFsms();
+        renderSupplierQuality();
         renderCapa();
         renderTasks();
         renderAudit();
@@ -442,6 +536,7 @@ if (root) {
             risks,
             qms,
             fsms,
+            supplierQuality,
             correctiveActions,
             tasks,
             auditLogs,
@@ -453,6 +548,7 @@ if (root) {
             safeFetch(tenantPath('/risks')),
             safeFetch(tenantPath('/qms'), { objectives: [], audits: [], findings: [], management_reviews: [] }),
             safeFetch(tenantPath('/fsms'), { haccp_plans: [], hazards: [], ccps: [], oprps: [], prps: [], monitoring_records: [] }),
+            safeFetch(tenantPath('/supplier-quality'), { suppliers: [], evaluations: [], certificates: [], equipment_assets: [], calibration_records: [] }),
             safeFetch(tenantPath('/corrective-actions')),
             safeFetch(tenantPath('/workflow-tasks')),
             safeFetch(tenantPath('/audit-logs')),
@@ -465,6 +561,7 @@ if (root) {
         state.risks = risks;
         state.qms = qms;
         state.fsms = fsms;
+        state.supplierQuality = supplierQuality;
         state.correctiveActions = correctiveActions;
         state.tasks = tasks;
         state.auditLogs = auditLogs;
@@ -705,6 +802,107 @@ if (root) {
             els.monitoringForm.reset();
             await loadWorkspace();
             showStatus(payload.is_deviation ? 'Deviation CAPA opened.' : 'Monitoring record created.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.supplierForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.supplierForm);
+
+        try {
+            await api(tenantPath('/supplier-quality/suppliers'), {
+                method: 'POST',
+                body: JSON.stringify({
+                    name: form.get('name'),
+                    supplier_code: form.get('supplier_code'),
+                    category: form.get('category'),
+                    contact_email: form.get('contact_email') || null,
+                    owner_id: Number(form.get('owner_id')),
+                    approval_status: 'Pending',
+                    risk_level: 'Medium',
+                }),
+            });
+            els.supplierForm.reset();
+            await loadWorkspace();
+            showStatus('Supplier created.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.supplierEvaluationForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.supplierEvaluationForm);
+        const supplierId = Number(form.get('supplier_id'));
+
+        try {
+            await api(tenantPath(`/supplier-quality/suppliers/${supplierId}/evaluations`), {
+                method: 'POST',
+                body: JSON.stringify({
+                    evaluated_by_id: Number(form.get('evaluated_by_id')),
+                    evaluation_date: form.get('evaluation_date'),
+                    score: Number(form.get('score')),
+                    result: form.get('result'),
+                    next_review_date: form.get('next_review_date') || null,
+                    notes: form.get('notes') || null,
+                }),
+            });
+            els.supplierEvaluationForm.reset();
+            await loadWorkspace();
+            showStatus('Supplier evaluation recorded.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.equipmentForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.equipmentForm);
+
+        try {
+            await api(tenantPath('/supplier-quality/equipment'), {
+                method: 'POST',
+                body: JSON.stringify({
+                    asset_tag: form.get('asset_tag'),
+                    name: form.get('name'),
+                    location: form.get('location'),
+                    owner_id: Number(form.get('owner_id')),
+                    calibration_interval_days: Number(form.get('calibration_interval_days')),
+                    critical_to_food_safety: form.get('critical_to_food_safety') === 'on',
+                    status: 'Active',
+                }),
+            });
+            els.equipmentForm.reset();
+            await loadWorkspace();
+            showStatus('Equipment created.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.calibrationForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.calibrationForm);
+        const equipmentId = Number(form.get('equipment_asset_id'));
+        const result = form.get('result');
+
+        try {
+            await api(tenantPath(`/supplier-quality/equipment/${equipmentId}/calibrations`), {
+                method: 'POST',
+                body: JSON.stringify({
+                    performed_by_id: Number(form.get('performed_by_id')),
+                    performed_at: form.get('performed_at'),
+                    due_at: form.get('due_at'),
+                    result,
+                    certificate_number: form.get('certificate_number') || null,
+                    notes: form.get('notes') || null,
+                }),
+            });
+            els.calibrationForm.reset();
+            await loadWorkspace();
+            showStatus(result === 'Fail' || result === 'Overdue' ? 'Calibration CAPA opened.' : 'Calibration recorded.');
         } catch (error) {
             showStatus(error.message, 'error');
         }

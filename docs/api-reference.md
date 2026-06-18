@@ -77,6 +77,15 @@ All tenant routes use:
 - `POST /fsms/prps`
 - `POST /fsms/monitoring-records`
 
+### Supplier Quality And Calibration
+
+- `GET /supplier-quality`
+- `POST /supplier-quality/suppliers`
+- `POST /supplier-quality/suppliers/{supplier}/evaluations`
+- `POST /supplier-quality/suppliers/{supplier}/certificates`
+- `POST /supplier-quality/equipment`
+- `POST /supplier-quality/equipment/{equipmentAsset}/calibrations`
+
 ## Authorization
 
 - Tenant middleware rejects cross-tenant access.
@@ -85,4 +94,5 @@ All tenant routes use:
 - `capa.create` and `capa.close` control CAPA actions.
 - `qms.view` and `qms.manage` control ISO 9001 module actions.
 - `fsms.view` and `fsms.manage` control ISO 22000 module actions.
+- `supplier.view` and `supplier.manage` control supplier quality and calibration actions.
 - `audit.view` controls audit-ledger reads and manual audit entries.

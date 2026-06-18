@@ -1,6 +1,6 @@
 # ISO-Forge
 
-ISO-Forge is a Laravel prototype for a developer-centric ISO compliance framework. The current build follows the local project documents: multi-tenant data isolation, RBAC, document control, workflow tasks, ISO 9001 risk/CAPA records, ISO 22000 HACCP controls, electronic signatures, and a hash-chained audit ledger.
+ISO-Forge is a Laravel prototype for a developer-centric ISO compliance framework. The current build follows the local project documents: multi-tenant data isolation, RBAC, document control, workflow tasks, ISO 9001 risk/CAPA records, ISO 22000 HACCP controls, supplier quality evidence, electronic signatures, and a hash-chained audit ledger.
 
 ## Stack
 
@@ -38,6 +38,7 @@ Tenant: angkor-quality-foods
 - Generic workflow definitions, instances, and user tasks
 - ISO 9001 risk register, nonconformance records, and corrective actions
 - ISO 22000 HACCP plans, hazard analysis, CCP/OPRP controls, PRPs, and monitoring records
+- Supplier approvals, evaluations, certificates, equipment assets, and calibration records
 - SHA-256 audit log chaining with `previous_hash`, `payload_hash`, and `entry_hash`
 - Dashboard for documents, approvals, risks, CAPA, tasks, and audit ledger
 - Sanctum-protected API routes with tenant access checks
@@ -94,6 +95,16 @@ Tenant: angkor-quality-foods
 - FSMS browser tab for HACCP plans, CCPs, hazard analysis, PRPs, and monitoring records
 - FSMS API actions protected by `fsms.view` and `fsms.manage` permissions
 
+## Phase 8 Supplier Quality And Calibration
+
+- Approved supplier list with owner, category, status, risk level, and linked risk records
+- Supplier evaluations with score-based risk updates and linked evidence documents
+- Supplier certificates with expiry status tracking
+- Equipment asset register for food-safety critical devices
+- Calibration records linked to evidence documents, equipment status, and CAPA when checks fail
+- Supplier Quality browser tab for suppliers, evaluations, certificates, equipment, and calibration records
+- Supplier Quality API actions protected by `supplier.view` and `supplier.manage` permissions
+
 ## API
 
 Authenticate:
@@ -144,6 +155,12 @@ Available tenant routes:
 - `POST /api/tenants/{tenant:slug}/fsms/hazards/{hazardAnalysis}/oprps`
 - `POST /api/tenants/{tenant:slug}/fsms/prps`
 - `POST /api/tenants/{tenant:slug}/fsms/monitoring-records`
+- `GET /api/tenants/{tenant:slug}/supplier-quality`
+- `POST /api/tenants/{tenant:slug}/supplier-quality/suppliers`
+- `POST /api/tenants/{tenant:slug}/supplier-quality/suppliers/{supplier}/evaluations`
+- `POST /api/tenants/{tenant:slug}/supplier-quality/suppliers/{supplier}/certificates`
+- `POST /api/tenants/{tenant:slug}/supplier-quality/equipment`
+- `POST /api/tenants/{tenant:slug}/supplier-quality/equipment/{equipmentAsset}/calibrations`
 - `GET /api/tenants/{tenant:slug}/audit-logs`
 - `POST /api/tenants/{tenant:slug}/audit-logs`
 
@@ -156,7 +173,7 @@ npm audit
 npm run build
 ```
 
-Current status: 24 tests passing and npm audit clean.
+Current status: 28 tests passing and npm audit clean.
 
 ## Verification Command
 
@@ -167,7 +184,7 @@ php artisan iso-forge:verify-audit-chain
 Expected result:
 
 ```text
-Audit chain valid. Checked 12 entries; legacy entries: 0.
+Audit chain valid. Checked 17 entries; legacy entries: 0.
 ```
 
 ## Next Development Targets
@@ -175,4 +192,4 @@ Audit chain valid. Checked 12 entries; legacy entries: 0.
 - Add file upload/storage for controlled document versions
 - Add request classes/resources for stricter API contracts
 - Add edit screens and validation summaries for Phase 3 forms
-- Add supplier approval and calibration modules linked to ISO 22000/9001 evidence
+- Add training, competency, and awareness evidence linked to QMS roles
