@@ -13,6 +13,18 @@ use Illuminate\Support\Facades\DB;
 
 class WorkflowTaskController extends Controller
 {
+    public function index(Tenant $tenant): JsonResponse
+    {
+        return response()->json([
+            'data' => WorkflowTask::query()
+                ->with(['assignee:id,name,email', 'workflowInstance.workflow'])
+                ->whereHas('workflowInstance', fn ($query) => $query->where('tenant_id', $tenant->id))
+                ->orderByRaw("case when status = 'Open' then 0 when status = 'Waiting' then 1 else 2 end")
+                ->orderBy('due_at')
+                ->get(),
+        ]);
+    }
+
     public function complete(Request $request, Tenant $tenant, WorkflowTask $workflowTask): JsonResponse
     {
         $data = $request->validate([

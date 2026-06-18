@@ -8,6 +8,7 @@ use App\Models\CorrectiveAction;
 use App\Models\Document;
 use App\Models\Risk;
 use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -27,6 +28,19 @@ class IsoForgeController extends Controller
                 'audit_events' => $tenant->auditLogs()->count(),
             ],
             'latest_audit_hash' => $tenant->auditLogs()->latest('id')->value('entry_hash'),
+        ]);
+    }
+
+    public function users(Request $request, Tenant $tenant): JsonResponse
+    {
+        $this->authorizeTenant($request, $tenant);
+
+        return response()->json([
+            'data' => User::query()
+                ->with('roles:id,name,slug')
+                ->where('tenant_id', $tenant->id)
+                ->orderBy('name')
+                ->get(['id', 'tenant_id', 'name', 'email', 'job_title']),
         ]);
     }
 

@@ -16,6 +16,17 @@ use Illuminate\Validation\Rule;
 
 class DocumentController extends Controller
 {
+    public function approvals(Tenant $tenant): JsonResponse
+    {
+        return response()->json([
+            'data' => DocumentApproval::query()
+                ->with(['approver:id,name,email', 'documentVersion.document'])
+                ->whereHas('documentVersion.document', fn ($query) => $query->where('tenant_id', $tenant->id))
+                ->latest()
+                ->get(),
+        ]);
+    }
+
     public function index(Tenant $tenant): JsonResponse
     {
         return response()->json([

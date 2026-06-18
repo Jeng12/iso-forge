@@ -29,6 +29,16 @@ class IsoForgeFeatureTest extends TestCase
             ->assertSee('Immutable Audit Ledger');
     }
 
+    public function test_phase_three_workspace_route_renders_frontend_shell(): void
+    {
+        $this->get('/app')
+            ->assertOk()
+            ->assertSee('ISO-Forge')
+            ->assertSee('Compliance workspace')
+            ->assertSee('New Document')
+            ->assertSee('New CAPA');
+    }
+
     public function test_sanctum_login_can_access_tenant_snapshot(): void
     {
         $this->seed();
@@ -47,6 +57,31 @@ class IsoForgeFeatureTest extends TestCase
             ->assertOk()
             ->assertJsonPath('tenant.slug', 'angkor-quality-foods')
             ->assertJsonPath('metrics.open_capas', 1);
+    }
+
+    public function test_phase_three_frontend_data_endpoints_return_workspace_collections(): void
+    {
+        $this->seed();
+
+        $tenant = $this->tenant();
+        $jojo = $this->user('jojo@iso-forge.test');
+        $token = $this->tokenFor($jojo);
+
+        $this->withToken($token)
+            ->getJson("/api/tenants/{$tenant->slug}/users")
+            ->assertOk()
+            ->assertJsonCount(4, 'data')
+            ->assertJsonPath('data.0.tenant_id', $tenant->id);
+
+        $this->withToken($token)
+            ->getJson("/api/tenants/{$tenant->slug}/document-approvals")
+            ->assertOk()
+            ->assertJsonPath('data.0.document_version.document.tenant_id', $tenant->id);
+
+        $this->withToken($token)
+            ->getJson("/api/tenants/{$tenant->slug}/workflow-tasks")
+            ->assertOk()
+            ->assertJsonCount(2, 'data');
     }
 
     public function test_api_rejects_cross_tenant_access(): void

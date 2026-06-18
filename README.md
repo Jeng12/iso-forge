@@ -21,7 +21,7 @@ npm run build
 php artisan serve
 ```
 
-Open `http://127.0.0.1:8000`.
+Open `http://127.0.0.1:8000/app` for the Phase 3 browser workspace.
 
 ## Demo Account
 
@@ -51,6 +51,15 @@ Tenant: angkor-quality-foods
 - Write-path audit events for documents, risks, CAPA, nonconformances, and workflow tasks
 - Tests for RBAC denial, tenant isolation, document approvals, signatures, CAPA workflow, and audit hash-chain extension
 
+## Phase 3 Frontend
+
+- Authenticated browser workspace at `/app`
+- Token login/logout against Sanctum API endpoints
+- API-backed overview metrics, approvals, workflow tasks, documents, risks, CAPA, and audit ledger
+- Create forms for controlled documents, risks, nonconformances, and CAPA records
+- Inline actions for document approval and workflow task completion
+- Shared user selectors populated from tenant API data
+
 ## API
 
 Authenticate:
@@ -71,8 +80,10 @@ curl http://127.0.0.1:8000/api/tenants/angkor-quality-foods/snapshot ^
 Available tenant routes:
 
 - `GET /api/tenants/{tenant:slug}/snapshot`
+- `GET /api/tenants/{tenant:slug}/users`
 - `GET /api/tenants/{tenant:slug}/documents`
 - `POST /api/tenants/{tenant:slug}/documents`
+- `GET /api/tenants/{tenant:slug}/document-approvals`
 - `POST /api/tenants/{tenant:slug}/documents/{document}/approvals`
 - `POST /api/tenants/{tenant:slug}/document-approvals/{documentApproval}/approve`
 - `GET /api/tenants/{tenant:slug}/risks`
@@ -82,6 +93,7 @@ Available tenant routes:
 - `POST /api/tenants/{tenant:slug}/non-conformances`
 - `POST /api/tenants/{tenant:slug}/corrective-actions`
 - `PATCH /api/tenants/{tenant:slug}/corrective-actions/{correctiveAction}`
+- `GET /api/tenants/{tenant:slug}/workflow-tasks`
 - `POST /api/tenants/{tenant:slug}/workflow-tasks/{workflowTask}/complete`
 - `GET /api/tenants/{tenant:slug}/audit-logs`
 - `POST /api/tenants/{tenant:slug}/audit-logs`
@@ -95,12 +107,11 @@ npm audit
 npm run build
 ```
 
-Current status: 11 tests passing and npm audit clean.
+Current status: 13 tests passing and npm audit clean.
 
 ## Next Development Targets
 
-- Add browser login/logout screens on top of Sanctum-backed accounts
-- Add CRUD screens for documents, risks, CAPA, and workflow tasks
 - Add file upload/storage for controlled document versions
 - Add request classes/resources for stricter API contracts
+- Add edit screens and validation summaries for Phase 3 forms
 - Expand ISO 22000 HACCP, CCP, OPRP, and monitoring-record modules
