@@ -63,4 +63,37 @@ class PhaseFiveRegressionTest extends TestCase
         $this->artisan('iso-forge:verify-audit-chain')
             ->assertExitCode(1);
     }
+
+    public function test_audit_payload_hash_is_stable_when_json_keys_are_reordered(): void
+    {
+        $payload = [
+            'tenant_id' => 1,
+            'user_id' => 1,
+            'event' => 'tenant.created',
+            'auditable_type' => Tenant::class,
+            'auditable_id' => 1,
+            'old_values' => [],
+            'new_values' => [
+                'name' => 'Angkor Quality Foods',
+                'slug' => 'angkor-quality-foods',
+            ],
+            'occurred_at' => now()->toJSON(),
+        ];
+
+        $reorderedPayload = [
+            'event' => $payload['event'],
+            'user_id' => $payload['user_id'],
+            'tenant_id' => $payload['tenant_id'],
+            'new_values' => [
+                'slug' => 'angkor-quality-foods',
+                'name' => 'Angkor Quality Foods',
+            ],
+            'old_values' => [],
+            'occurred_at' => $payload['occurred_at'],
+            'auditable_id' => $payload['auditable_id'],
+            'auditable_type' => $payload['auditable_type'],
+        ];
+
+        $this->assertSame(AuditLog::payloadHash($payload), AuditLog::payloadHash($reorderedPayload));
+    }
 }

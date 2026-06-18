@@ -59,7 +59,7 @@ class AuditLog extends Model
             'occurred_at' => $occurredAt->toJSON(),
         ];
 
-        $payloadHash = hash('sha256', json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+        $payloadHash = self::payloadHash($payload);
         $entryHash = hash('sha256', $previousHash.$payloadHash);
 
         return self::create([
@@ -88,7 +88,7 @@ class AuditLog extends Model
             }
 
             if ($log->payload_snapshot) {
-                $expectedPayloadHash = hash('sha256', json_encode($log->payload_snapshot, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+                $expectedPayloadHash = self::payloadHash($log->payload_snapshot);
 
                 if ($log->payload_hash !== $expectedPayloadHash) {
                     $errors[] = "Audit log {$log->id} payload_hash does not match payload_snapshot.";
@@ -118,6 +118,24 @@ class AuditLog extends Model
             'legacy' => $legacy,
             'errors' => $errors,
         ];
+    }
+
+    public static function payloadHash(array $payload): string
+    {
+        return hash('sha256', json_encode(self::canonicalize($payload), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    }
+
+    private static function canonicalize(array $payload): array
+    {
+        ksort($payload);
+
+        foreach ($payload as $key => $value) {
+            if (is_array($value)) {
+                $payload[$key] = self::canonicalize($value);
+            }
+        }
+
+        return $payload;
     }
 
     public function tenant(): BelongsTo
