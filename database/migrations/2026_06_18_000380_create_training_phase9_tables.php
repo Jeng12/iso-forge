@@ -37,7 +37,7 @@ return new class extends Migration
             $table->boolean('is_mandatory')->default(true)->index();
             $table->timestamps();
 
-            $table->unique(['role_id', 'training_program_id', 'competency_area']);
+            $table->unique(['role_id', 'training_program_id', 'competency_area'], 'competency_req_role_program_area_unique');
         });
 
         Schema::create('training_assignments', function (Blueprint $table) {
