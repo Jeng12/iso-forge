@@ -3,6 +3,21 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreCriticalControlPointRequest;
+use App\Http\Requests\StoreHaccpPlanRequest;
+use App\Http\Requests\StoreHazardAnalysisRequest;
+use App\Http\Requests\StoreMonitoringRecordRequest;
+use App\Http\Requests\StoreOperationalPrerequisiteProgramRequest;
+use App\Http\Requests\StorePrerequisiteProgramRequest;
+use App\Http\Requests\StoreProcessStepRequest;
+use App\Http\Requests\UpdateHaccpPlanRequest;
+use App\Http\Resources\CriticalControlPointResource;
+use App\Http\Resources\HaccpPlanResource;
+use App\Http\Resources\HazardAnalysisResource;
+use App\Http\Resources\MonitoringRecordResource;
+use App\Http\Resources\OperationalPrerequisiteProgramResource;
+use App\Http\Resources\PrerequisiteProgramResource;
+use App\Http\Resources\ProcessStepResource;
 use App\Models\AuditLog;
 use App\Models\CorrectiveAction;
 use App\Models\CriticalControlPoint;
@@ -17,7 +32,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 
 class FsmsController extends Controller
 {
@@ -25,48 +39,53 @@ class FsmsController extends Controller
     {
         return response()->json([
             'data' => [
-                'haccp_plans' => HaccpPlan::query()
-                    ->with(['owner:id,name,email', 'processSteps.hazardAnalyses.ccp', 'processSteps.hazardAnalyses.oprp'])
-                    ->where('tenant_id', $tenant->id)
-                    ->latest()
-                    ->get(),
-                'hazards' => HazardAnalysis::query()
-                    ->with('processStep.haccpPlan:id,name,product')
-                    ->where('tenant_id', $tenant->id)
-                    ->orderByDesc('risk_score')
-                    ->get(),
-                'ccps' => CriticalControlPoint::query()
-                    ->with(['hazardAnalysis.processStep.haccpPlan:id,name,product', 'responsibleUser:id,name,email'])
-                    ->where('tenant_id', $tenant->id)
-                    ->get(),
-                'oprps' => OperationalPrerequisiteProgram::query()
-                    ->with(['hazardAnalysis.processStep.haccpPlan:id,name,product', 'responsibleUser:id,name,email'])
-                    ->where('tenant_id', $tenant->id)
-                    ->get(),
-                'prps' => PrerequisiteProgram::query()
-                    ->with('owner:id,name,email')
-                    ->where('tenant_id', $tenant->id)
-                    ->get(),
-                'monitoring_records' => MonitoringRecord::query()
-                    ->with(['monitorable', 'recorder:id,name,email', 'correctiveAction:id,title,status'])
-                    ->where('tenant_id', $tenant->id)
-                    ->latest('observed_at')
-                    ->limit(50)
-                    ->get(),
+                'haccp_plans' => HaccpPlanResource::collection(
+                    HaccpPlan::query()
+                        ->with(['owner:id,name,email,job_title', 'processSteps.hazardAnalyses.ccp', 'processSteps.hazardAnalyses.oprp'])
+                        ->where('tenant_id', $tenant->id)
+                        ->latest()
+                        ->get()
+                ),
+                'hazards' => HazardAnalysisResource::collection(
+                    HazardAnalysis::query()
+                        ->with('processStep.haccpPlan:id,name,product')
+                        ->where('tenant_id', $tenant->id)
+                        ->orderByDesc('risk_score')
+                        ->get()
+                ),
+                'ccps' => CriticalControlPointResource::collection(
+                    CriticalControlPoint::query()
+                        ->with(['hazardAnalysis.processStep.haccpPlan:id,name,product', 'responsibleUser:id,name,email,job_title'])
+                        ->where('tenant_id', $tenant->id)
+                        ->get()
+                ),
+                'oprps' => OperationalPrerequisiteProgramResource::collection(
+                    OperationalPrerequisiteProgram::query()
+                        ->with(['hazardAnalysis.processStep.haccpPlan:id,name,product', 'responsibleUser:id,name,email,job_title'])
+                        ->where('tenant_id', $tenant->id)
+                        ->get()
+                ),
+                'prps' => PrerequisiteProgramResource::collection(
+                    PrerequisiteProgram::query()
+                        ->with('owner:id,name,email,job_title')
+                        ->where('tenant_id', $tenant->id)
+                        ->get()
+                ),
+                'monitoring_records' => MonitoringRecordResource::collection(
+                    MonitoringRecord::query()
+                        ->with(['monitorable', 'recorder:id,name,email,job_title', 'correctiveAction:id,title,status'])
+                        ->where('tenant_id', $tenant->id)
+                        ->latest('observed_at')
+                        ->limit(50)
+                        ->get()
+                ),
             ],
         ]);
     }
 
-    public function storePlan(Request $request, Tenant $tenant): JsonResponse
+    public function storePlan(StoreHaccpPlanRequest $request, Tenant $tenant): JsonResponse
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'product' => ['required', 'string', 'max:255'],
-            'scope' => ['required', 'string'],
-            'owner_id' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
-            'effective_date' => ['nullable', 'date'],
-            'status' => ['sometimes', 'string', 'max:255'],
-        ]);
+        $data = $request->validated();
 
         $plan = HaccpPlan::create([
             ...$data,
@@ -76,18 +95,27 @@ class FsmsController extends Controller
 
         $this->audit($request, $tenant, 'fsms.haccp_plan.created', HaccpPlan::class, $plan->id, [], $plan->toArray());
 
-        return response()->json(['data' => $plan->load('owner:id,name,email')], 201);
+        return response()->json(['data' => new HaccpPlanResource($plan->load('owner:id,name,email,job_title'))], 201);
     }
 
-    public function storeStep(Request $request, Tenant $tenant, HaccpPlan $haccpPlan): JsonResponse
+    public function updatePlan(UpdateHaccpPlanRequest $request, Tenant $tenant, HaccpPlan $haccpPlan): JsonResponse
     {
         abort_unless((int) $haccpPlan->tenant_id === (int) $tenant->id, 404);
 
-        $data = $request->validate([
-            'sequence' => ['required', 'integer', 'min:1'],
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-        ]);
+        $data = $request->validated();
+        $oldValues = $haccpPlan->toArray();
+        $haccpPlan->update($data);
+
+        $this->audit($request, $tenant, 'fsms.haccp_plan.updated', HaccpPlan::class, $haccpPlan->id, $oldValues, $haccpPlan->fresh()->toArray());
+
+        return response()->json(['data' => new HaccpPlanResource($haccpPlan->fresh(['owner:id,name,email,job_title', 'processSteps.hazardAnalyses.ccp', 'processSteps.hazardAnalyses.oprp']))]);
+    }
+
+    public function storeStep(StoreProcessStepRequest $request, Tenant $tenant, HaccpPlan $haccpPlan): JsonResponse
+    {
+        abort_unless((int) $haccpPlan->tenant_id === (int) $tenant->id, 404);
+
+        $data = $request->validated();
 
         $step = ProcessStep::create([
             ...$data,
@@ -97,22 +125,14 @@ class FsmsController extends Controller
 
         $this->audit($request, $tenant, 'fsms.process_step.created', ProcessStep::class, $step->id, [], $step->toArray());
 
-        return response()->json(['data' => $step], 201);
+        return response()->json(['data' => new ProcessStepResource($step)], 201);
     }
 
-    public function storeHazard(Request $request, Tenant $tenant, ProcessStep $processStep): JsonResponse
+    public function storeHazard(StoreHazardAnalysisRequest $request, Tenant $tenant, ProcessStep $processStep): JsonResponse
     {
         abort_unless((int) $processStep->tenant_id === (int) $tenant->id, 404);
 
-        $data = $request->validate([
-            'hazard_type' => ['required', 'string', 'max:255'],
-            'hazard_description' => ['required', 'string'],
-            'likelihood' => ['required', 'integer', 'min:1', 'max:5'],
-            'severity' => ['required', 'integer', 'min:1', 'max:5'],
-            'control_measure' => ['required', 'string'],
-            'control_type' => ['required', 'in:CCP,OPRP,PRP,None'],
-            'status' => ['sometimes', 'string', 'max:255'],
-        ]);
+        $data = $request->validated();
 
         $hazard = HazardAnalysis::create([
             ...$data,
@@ -123,21 +143,14 @@ class FsmsController extends Controller
 
         $this->audit($request, $tenant, 'fsms.hazard.created', HazardAnalysis::class, $hazard->id, [], $hazard->toArray());
 
-        return response()->json(['data' => $hazard->load('processStep.haccpPlan:id,name,product')], 201);
+        return response()->json(['data' => new HazardAnalysisResource($hazard->load('processStep.haccpPlan:id,name,product'))], 201);
     }
 
-    public function storeCcp(Request $request, Tenant $tenant, HazardAnalysis $hazardAnalysis): JsonResponse
+    public function storeCcp(StoreCriticalControlPointRequest $request, Tenant $tenant, HazardAnalysis $hazardAnalysis): JsonResponse
     {
         abort_unless((int) $hazardAnalysis->tenant_id === (int) $tenant->id, 404);
 
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'critical_limit' => ['required', 'string', 'max:255'],
-            'monitoring_frequency' => ['required', 'string', 'max:255'],
-            'responsible_user_id' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
-            'corrective_action_procedure' => ['required', 'string'],
-            'status' => ['sometimes', 'string', 'max:255'],
-        ]);
+        $data = $request->validated();
 
         $ccp = CriticalControlPoint::create([
             ...$data,
@@ -149,20 +162,14 @@ class FsmsController extends Controller
         $hazardAnalysis->update(['control_type' => 'CCP']);
         $this->audit($request, $tenant, 'fsms.ccp.created', CriticalControlPoint::class, $ccp->id, [], $ccp->toArray());
 
-        return response()->json(['data' => $ccp->load('responsibleUser:id,name,email')], 201);
+        return response()->json(['data' => new CriticalControlPointResource($ccp->load('responsibleUser:id,name,email,job_title'))], 201);
     }
 
-    public function storeOprp(Request $request, Tenant $tenant, HazardAnalysis $hazardAnalysis): JsonResponse
+    public function storeOprp(StoreOperationalPrerequisiteProgramRequest $request, Tenant $tenant, HazardAnalysis $hazardAnalysis): JsonResponse
     {
         abort_unless((int) $hazardAnalysis->tenant_id === (int) $tenant->id, 404);
 
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'control_measure' => ['required', 'string'],
-            'monitoring_frequency' => ['required', 'string', 'max:255'],
-            'responsible_user_id' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
-            'status' => ['sometimes', 'string', 'max:255'],
-        ]);
+        $data = $request->validated();
 
         $oprp = OperationalPrerequisiteProgram::create([
             ...$data,
@@ -174,19 +181,12 @@ class FsmsController extends Controller
         $hazardAnalysis->update(['control_type' => 'OPRP']);
         $this->audit($request, $tenant, 'fsms.oprp.created', OperationalPrerequisiteProgram::class, $oprp->id, [], $oprp->toArray());
 
-        return response()->json(['data' => $oprp->load('responsibleUser:id,name,email')], 201);
+        return response()->json(['data' => new OperationalPrerequisiteProgramResource($oprp->load('responsibleUser:id,name,email,job_title'))], 201);
     }
 
-    public function storePrp(Request $request, Tenant $tenant): JsonResponse
+    public function storePrp(StorePrerequisiteProgramRequest $request, Tenant $tenant): JsonResponse
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'category' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'owner_id' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
-            'verification_frequency' => ['required', 'string', 'max:255'],
-            'status' => ['sometimes', 'string', 'max:255'],
-        ]);
+        $data = $request->validated();
 
         $prp = PrerequisiteProgram::create([
             ...$data,
@@ -196,22 +196,12 @@ class FsmsController extends Controller
 
         $this->audit($request, $tenant, 'fsms.prp.created', PrerequisiteProgram::class, $prp->id, [], $prp->toArray());
 
-        return response()->json(['data' => $prp->load('owner:id,name,email')], 201);
+        return response()->json(['data' => new PrerequisiteProgramResource($prp->load('owner:id,name,email,job_title'))], 201);
     }
 
-    public function storeMonitoringRecord(Request $request, Tenant $tenant): JsonResponse
+    public function storeMonitoringRecord(StoreMonitoringRecordRequest $request, Tenant $tenant): JsonResponse
     {
-        $data = $request->validate([
-            'monitorable_type' => ['required', 'in:ccp,oprp'],
-            'monitorable_id' => ['required', 'integer'],
-            'recorded_by_id' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
-            'measured_value' => ['nullable', 'numeric'],
-            'unit' => ['nullable', 'string', 'max:50'],
-            'result' => ['required', 'string', 'max:255'],
-            'is_deviation' => ['required', 'boolean'],
-            'observed_at' => ['required', 'date'],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $data = $request->validated();
 
         $monitorable = $this->resolveMonitorable($tenant, $data['monitorable_type'], (int) $data['monitorable_id']);
 
@@ -248,7 +238,7 @@ class FsmsController extends Controller
         });
 
         return response()->json([
-            'data' => $record->load(['monitorable', 'recorder:id,name,email', 'correctiveAction:id,title,status']),
+            'data' => new MonitoringRecordResource($record->load(['monitorable', 'recorder:id,name,email,job_title', 'correctiveAction:id,title,status'])),
         ], 201);
     }
 

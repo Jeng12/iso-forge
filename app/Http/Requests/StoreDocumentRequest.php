@@ -31,6 +31,7 @@ class StoreDocumentRequest extends FormRequest
             'file_path' => ['required_without:file', 'nullable', 'string', 'max:255'],
             'mime_type' => ['nullable', 'string', 'max:255'],
             'file_size' => ['nullable', 'integer', 'min:0'],
+            'retention_until' => ['nullable', 'date'],
             'change_summary' => ['nullable', 'string'],
             'approver_ids' => ['nullable', 'array'],
             'approver_ids.*' => [Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],

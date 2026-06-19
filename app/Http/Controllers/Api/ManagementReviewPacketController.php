@@ -280,8 +280,11 @@ class ManagementReviewPacketController extends Controller
 
     private function renderPacketPdf(array $packet): string
     {
+        $packet = json_decode(json_encode($packet, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), true);
         $summary = $packet['evidence_summary'];
-        $lines = [
+        $pages = [];
+
+        $this->appendPdfLines($pages, [
             'ISO-Forge Management Review Packet',
             'Packet ID: '.$packet['packet_id'],
             'Tenant: '.$packet['tenant']['name'].' ('.$packet['tenant']['slug'].')',
@@ -297,53 +300,222 @@ class ManagementReviewPacketController extends Controller
             'Audit chain: '.$summary['audit_chain']['events'].' events',
             'Latest audit hash: '.$summary['audit_chain']['latest_hash'],
             'Generated at: '.$packet['generated_at'],
+            '',
+            'Signature Blocks',
+            'Prepared by: ______________________________ Date: ______________',
+            'Reviewed by: ______________________________ Date: ______________',
+            'Approved by: ______________________________ Date: ______________',
+            'Management review chair: '.$this->pdfField($packet['management_review'], 'chair.name'),
+        ]);
+
+        $this->appendPdfTable($pages, 'QMS Objectives', ['Title', 'Owner', 'Status', 'Due'], array_map(fn (array $objective): array => [
+            $objective['title'] ?? '-',
+            $this->pdfField($objective, 'owner.name'),
+            $objective['status'] ?? '-',
+            $objective['due_date'] ?? '-',
+        ], $packet['qms']['objectives'] ?? []));
+
+        $this->appendPdfTable($pages, 'Audit Program', ['Title', 'Lead', 'Status', 'Scheduled'], array_map(fn (array $audit): array => [
+            $audit['title'] ?? '-',
+            $this->pdfField($audit, 'lead_auditor.name'),
+            $audit['status'] ?? '-',
+            $audit['scheduled_date'] ?? '-',
+        ], $packet['qms']['audits'] ?? []));
+
+        $this->appendPdfTable($pages, 'Audit Findings', ['Reference', 'Type', 'Severity', 'Status'], array_map(fn (array $finding): array => [
+            $finding['reference'] ?? '-',
+            $finding['finding_type'] ?? '-',
+            $finding['severity'] ?? '-',
+            $finding['status'] ?? '-',
+        ], $packet['qms']['findings'] ?? []));
+
+        $this->appendPdfTable($pages, 'Training Programs', ['Code', 'Title', 'Owner', 'Status'], array_map(fn (array $program): array => [
+            $program['code'] ?? '-',
+            $program['title'] ?? '-',
+            $this->pdfField($program, 'owner.name'),
+            $program['status'] ?? '-',
+        ], $packet['training']['programs'] ?? []));
+
+        $this->appendPdfTable($pages, 'Recent Training Records', ['Program', 'User', 'Result', 'Completed'], array_map(fn (array $record): array => [
+            $this->pdfField($record, 'training_program.code'),
+            $this->pdfField($record, 'user.name'),
+            ($record['result'] ?? '-').' / '.($record['competency_status'] ?? '-'),
+            $record['completed_at'] ?? '-',
+        ], $packet['training']['recent_records'] ?? []));
+
+        $this->appendPdfTable($pages, 'Incident Reports', ['Reference', 'Severity', 'Status', 'Owner'], array_map(fn (array $report): array => [
+            $report['reference'] ?? '-',
+            $report['severity'] ?? '-',
+            $report['status'] ?? '-',
+            $this->pdfField($report, 'owner.name'),
+        ], $packet['incident_response']['reports'] ?? []));
+
+        $this->appendPdfTable($pages, 'Supplier Register', ['Code', 'Supplier', 'Risk', 'Approval'], array_map(fn (array $supplier): array => [
+            $supplier['supplier_code'] ?? '-',
+            $supplier['name'] ?? '-',
+            $supplier['risk_level'] ?? '-',
+            $supplier['approval_status'] ?? '-',
+        ], $packet['supplier_quality']['suppliers'] ?? []));
+
+        $this->appendPdfTable($pages, 'Certificates Expiring Within 90 Days', ['Supplier', 'Type', 'Expires', 'Status'], array_map(fn (array $certificate): array => [
+            $this->pdfField($certificate, 'supplier.name'),
+            $certificate['certificate_type'] ?? '-',
+            $certificate['expires_at'] ?? '-',
+            $certificate['status'] ?? '-',
+        ], $packet['supplier_quality']['certificates_expiring_90_days'] ?? []));
+
+        $this->appendPdfTable($pages, 'Calibration Failures', ['Asset', 'Result', 'Due', 'CAPA'], array_map(fn (array $record): array => [
+            $this->pdfField($record, 'equipment_asset.asset_tag'),
+            $record['result'] ?? '-',
+            $record['due_at'] ?? '-',
+            $this->pdfField($record, 'corrective_action.title'),
+        ], $packet['supplier_quality']['calibration_failures'] ?? []));
+
+        $this->appendPdfTable($pages, 'Open CAPA', ['Title', 'Assignee', 'Due', 'Status'], array_map(fn (array $action): array => [
+            $action['title'] ?? '-',
+            $this->pdfField($action, 'assignee.name'),
+            $action['due_date'] ?? '-',
+            $action['status'] ?? '-',
+        ], $packet['capa']['open_actions'] ?? []));
+
+        $this->appendPdfTable($pages, 'Latest Audit Chain Events', ['Event', 'User', 'Hash'], array_map(fn (array $log): array => [
+            $log['event'] ?? '-',
+            $this->pdfField($log, 'user.name'),
+            $log['entry_hash'] ?? '-',
+        ], $packet['audit_chain']['latest_events'] ?? []));
+
+        return $this->buildPdfDocument($pages);
+    }
+
+    private function appendPdfLines(array &$pages, array $lines): void
+    {
+        foreach ($lines as $line) {
+            if ($pages === [] || count($pages[array_key_last($pages)]) >= 42) {
+                $pages[] = [];
+            }
+
+            $pages[array_key_last($pages)][] = $this->pdfCell($line, 106);
+        }
+    }
+
+    private function appendPdfTable(array &$pages, string $title, array $headers, array $rows): void
+    {
+        $header = implode(' | ', $headers);
+        $lines = [
+            '',
+            $title,
+            $header,
+            str_repeat('-', min(strlen($header) + 24, 106)),
         ];
 
-        $stream = "BT\n/F1 10 Tf\n50 760 Td\n";
+        if ($rows === []) {
+            $lines[] = 'No records found.';
+        }
+
+        foreach ($rows as $row) {
+            $lines[] = implode(' | ', array_map(fn ($cell): string => $this->pdfCell($cell, 25), $row));
+        }
+
+        $this->appendPdfLines($pages, $lines);
+    }
+
+    private function pdfField(array $item, string $path, string $default = '-'): string
+    {
+        $value = $item;
+
+        foreach (explode('.', $path) as $segment) {
+            if (! is_array($value) || ! array_key_exists($segment, $value) || $value[$segment] === null || $value[$segment] === '') {
+                return $default;
+            }
+
+            $value = $value[$segment];
+        }
+
+        return $this->pdfCell($value, 80);
+    }
+
+    private function pdfCell(mixed $value, int $limit): string
+    {
+        $text = is_array($value)
+            ? json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+            : (string) ($value ?? '-');
+
+        $text = trim((string) preg_replace('/\s+/', ' ', $text));
+        $text = $text === '' ? '-' : $text;
+        $text = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $text) ?: $text;
+
+        if (strlen($text) <= $limit) {
+            return $text;
+        }
+
+        return substr($text, 0, max(0, $limit - 3)).'...';
+    }
+
+    private function buildPdfDocument(array $pages): string
+    {
+        $pages = array_values(array_filter($pages));
+        $pageCount = count($pages) ?: 1;
+        $pages = $pages === [] ? [['ISO-Forge Management Review Packet']] : $pages;
+        $kids = [];
+        $objects = [
+            1 => "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
+            3 => "3 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
+        ];
+
+        foreach ($pages as $index => $lines) {
+            $pageObjectId = 4 + ($index * 2);
+            $contentObjectId = $pageObjectId + 1;
+            $kids[] = $pageObjectId.' 0 R';
+            $stream = $this->renderPdfPageStream($lines, $index + 1, $pageCount);
+
+            $objects[$pageObjectId] = $pageObjectId." 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ".$contentObjectId." 0 R >>\nendobj\n";
+            $objects[$contentObjectId] = $contentObjectId." 0 obj\n<< /Length ".strlen($stream)." >>\nstream\n".$stream."endstream\nendobj\n";
+        }
+
+        $objects[2] = "2 0 obj\n<< /Type /Pages /Kids [".implode(' ', $kids).'] /Count '.$pageCount." >>\nendobj\n";
+        ksort($objects);
+
+        $pdf = "%PDF-1.4\n";
+        $offsets = [0];
+
+        foreach ($objects as $id => $object) {
+            $offsets[$id] = strlen($pdf);
+            $pdf .= $object;
+        }
+
+        $size = max(array_keys($objects)) + 1;
+        $xrefOffset = strlen($pdf);
+        $pdf .= "xref\n0 ".$size."\n";
+        $pdf .= "0000000000 65535 f \n";
+
+        for ($id = 1; $id < $size; $id++) {
+            $offset = $offsets[$id] ?? 0;
+            $pdf .= str_pad((string) $offset, 10, '0', STR_PAD_LEFT)." 00000 n \n";
+        }
+
+        $pdf .= "trailer\n<< /Size ".$size." /Root 1 0 R >>\n";
+        $pdf .= "startxref\n".$xrefOffset."\n%%EOF\n";
+
+        return $pdf;
+    }
+
+    private function renderPdfPageStream(array $lines, int $pageNumber, int $pageCount): string
+    {
+        $stream = "BT\n/F1 9 Tf\n40 760 Td\n";
 
         foreach ($lines as $index => $line) {
             if ($index > 0) {
-                $stream .= "0 -18 Td\n";
+                $stream .= "0 -16 Td\n";
             }
 
             $stream .= '('.$this->escapePdfText($line).") Tj\n";
         }
 
+        $stream .= "0 -24 Td\n";
+        $stream .= '(Page '.$pageNumber.' of '.$pageCount.") Tj\n";
         $stream .= "ET\n";
 
-        return $this->buildPdfDocument($stream);
-    }
-
-    private function buildPdfDocument(string $stream): string
-    {
-        $objects = [
-            "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
-            "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n",
-            "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n",
-            "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
-            "5 0 obj\n<< /Length ".strlen($stream)." >>\nstream\n".$stream."endstream\nendobj\n",
-        ];
-
-        $pdf = "%PDF-1.4\n";
-        $offsets = [0];
-
-        foreach ($objects as $object) {
-            $offsets[] = strlen($pdf);
-            $pdf .= $object;
-        }
-
-        $xrefOffset = strlen($pdf);
-        $pdf .= "xref\n0 ".(count($objects) + 1)."\n";
-        $pdf .= "0000000000 65535 f \n";
-
-        foreach (array_slice($offsets, 1) as $offset) {
-            $pdf .= str_pad((string) $offset, 10, '0', STR_PAD_LEFT)." 00000 n \n";
-        }
-
-        $pdf .= "trailer\n<< /Size ".(count($objects) + 1)." /Root 1 0 R >>\n";
-        $pdf .= "startxref\n".$xrefOffset."\n%%EOF\n";
-
-        return $pdf;
+        return $stream;
     }
 
     private function escapePdfText(string $line): string

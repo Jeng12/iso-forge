@@ -23,10 +23,13 @@ Use this checklist before tagging or deploying a release.
 - [ ] Tenant snapshot endpoint returns metrics.
 - [ ] Analytics dashboard returns incident, CAPA, training, and supplier-risk trend data.
 - [ ] Management review packet preview, JSON download, and PDF download work for a `review_packet.view` user.
+- [ ] Packet PDFs include section tables, page counts, and signature blocks.
 - [ ] Controlled document creation accepts an uploaded file and the stored current version downloads successfully.
 - [ ] Controlled document edit and new-version forms show validation summaries for missing required fields.
+- [ ] Superseded document versions can be reviewed, retained until their retention date, and pruned only after retention expiry.
 - [ ] Document approval creates an electronic signature.
 - [ ] QMS objective and audit records can be created by a `qms.manage` user.
+- [ ] QMS, FSMS, supplier, training, and incident edit forms can save seeded records and show validation summaries on contract failures.
 - [ ] Supplier quality and calibration records can be created by a `supplier.manage` user.
 - [ ] Training assignments, records, and awareness acknowledgements can be created by a `training.manage` user.
 - [ ] Incident reports, incident actions, emergency plans, and drills can be created by an `incident.manage` user.

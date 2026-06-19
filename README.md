@@ -160,6 +160,16 @@ Tenant: angkor-quality-foods
 - Management review packets can render as dependency-free PDF attachments
 - Phase 13 verification results in `docs/phase13-testing-results.md`
 
+## Phase 14 Contracts, Edit Workflows, Retention, And Rich PDFs
+
+- FormRequest and JSON resource contracts now cover QMS, FSMS, supplier quality, training, and incident response module APIs
+- Browser workspace edit forms are available for QMS objectives/audits, HACCP plans, suppliers/equipment, training programs/assignments, incidents, and emergency plans
+- Controlled document versions track retention dates, superseded-version review metadata, pruning metadata, and storage deletion audit evidence
+- Existing document versions are backfilled with six-year retention dates during migration
+- Superseded document versions can be reviewed and pruned after retention expiry through protected tenant API routes
+- Management review packet PDFs include paginated evidence tables and signature blocks
+- Phase 14 verification results in `docs/phase14-testing-results.md`
+
 ## API
 
 Authenticate:
@@ -191,6 +201,8 @@ Available tenant routes:
 - `PATCH /api/tenants/{tenant:slug}/documents/{document}`
 - `POST /api/tenants/{tenant:slug}/documents/{document}/versions`
 - `GET /api/tenants/{tenant:slug}/documents/{document}/versions/{documentVersion}/download`
+- `PATCH /api/tenants/{tenant:slug}/documents/{document}/versions/{documentVersion}/superseded-review`
+- `POST /api/tenants/{tenant:slug}/documents/{document}/versions/{documentVersion}/prune`
 - `GET /api/tenants/{tenant:slug}/document-approvals`
 - `POST /api/tenants/{tenant:slug}/documents/{document}/approvals`
 - `POST /api/tenants/{tenant:slug}/document-approvals/{documentApproval}/approve`
@@ -212,6 +224,7 @@ Available tenant routes:
 - `POST /api/tenants/{tenant:slug}/qms/management-reviews`
 - `GET /api/tenants/{tenant:slug}/fsms`
 - `POST /api/tenants/{tenant:slug}/fsms/haccp-plans`
+- `PATCH /api/tenants/{tenant:slug}/fsms/haccp-plans/{haccpPlan}`
 - `POST /api/tenants/{tenant:slug}/fsms/haccp-plans/{haccpPlan}/steps`
 - `POST /api/tenants/{tenant:slug}/fsms/process-steps/{processStep}/hazards`
 - `POST /api/tenants/{tenant:slug}/fsms/hazards/{hazardAnalysis}/ccps`
@@ -220,21 +233,27 @@ Available tenant routes:
 - `POST /api/tenants/{tenant:slug}/fsms/monitoring-records`
 - `GET /api/tenants/{tenant:slug}/supplier-quality`
 - `POST /api/tenants/{tenant:slug}/supplier-quality/suppliers`
+- `PATCH /api/tenants/{tenant:slug}/supplier-quality/suppliers/{supplier}`
 - `POST /api/tenants/{tenant:slug}/supplier-quality/suppliers/{supplier}/evaluations`
 - `POST /api/tenants/{tenant:slug}/supplier-quality/suppliers/{supplier}/certificates`
 - `POST /api/tenants/{tenant:slug}/supplier-quality/equipment`
+- `PATCH /api/tenants/{tenant:slug}/supplier-quality/equipment/{equipmentAsset}`
 - `POST /api/tenants/{tenant:slug}/supplier-quality/equipment/{equipmentAsset}/calibrations`
 - `GET /api/tenants/{tenant:slug}/training`
 - `POST /api/tenants/{tenant:slug}/training/programs`
+- `PATCH /api/tenants/{tenant:slug}/training/programs/{trainingProgram}`
 - `POST /api/tenants/{tenant:slug}/training/requirements`
 - `POST /api/tenants/{tenant:slug}/training/programs/{trainingProgram}/assignments`
+- `PATCH /api/tenants/{tenant:slug}/training/assignments/{trainingAssignment}`
 - `POST /api/tenants/{tenant:slug}/training/assignments/{trainingAssignment}/records`
 - `POST /api/tenants/{tenant:slug}/training/awareness-acknowledgements`
 - `GET /api/tenants/{tenant:slug}/incident-response`
 - `POST /api/tenants/{tenant:slug}/incident-response/reports`
+- `PATCH /api/tenants/{tenant:slug}/incident-response/reports/{incidentReport}`
 - `POST /api/tenants/{tenant:slug}/incident-response/reports/{incidentReport}/actions`
 - `PATCH /api/tenants/{tenant:slug}/incident-response/actions/{incidentAction}`
 - `POST /api/tenants/{tenant:slug}/incident-response/emergency-plans`
+- `PATCH /api/tenants/{tenant:slug}/incident-response/emergency-plans/{emergencyResponsePlan}`
 - `POST /api/tenants/{tenant:slug}/incident-response/emergency-plans/{emergencyResponsePlan}/drills`
 - `GET /api/tenants/{tenant:slug}/audit-logs`
 - `POST /api/tenants/{tenant:slug}/audit-logs`
@@ -248,7 +267,7 @@ npm audit
 npm run build
 ```
 
-Current status: 48 tests passing and npm audit clean.
+Current status: 52 tests passing and npm audit clean.
 
 ## Verification Command
 
@@ -266,7 +285,6 @@ The local development database may show a higher checked-entry count after live 
 
 ## Next Development Targets
 
-- Expand request/resource contracts across the remaining module APIs
-- Add edit screens for QMS, FSMS, supplier, training, and incident forms
-- Add document retention, superseded-version review, and storage pruning workflows
-- Add richer PDF packet sections with paginated tables and signature blocks
+- Add scheduled retention review/pruning reports with dry-run exports
+- Add configurable management-review packet templates and branding
+- Add bulk import/export workflows for module records and evidence attachments

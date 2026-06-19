@@ -3,6 +3,17 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreEmergencyDrillRequest;
+use App\Http\Requests\StoreEmergencyResponsePlanRequest;
+use App\Http\Requests\StoreIncidentActionRequest;
+use App\Http\Requests\StoreIncidentReportRequest;
+use App\Http\Requests\UpdateEmergencyResponsePlanRequest;
+use App\Http\Requests\UpdateIncidentActionRequest;
+use App\Http\Requests\UpdateIncidentReportRequest;
+use App\Http\Resources\EmergencyDrillResource;
+use App\Http\Resources\EmergencyResponsePlanResource;
+use App\Http\Resources\IncidentActionResource;
+use App\Http\Resources\IncidentReportResource;
 use App\Models\AuditLog;
 use App\Models\CorrectiveAction;
 use App\Models\CriticalControlPoint;
@@ -18,7 +29,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 
 class IncidentResponseController extends Controller
 {
@@ -26,67 +36,57 @@ class IncidentResponseController extends Controller
     {
         return response()->json([
             'data' => [
-                'incident_reports' => IncidentReport::query()
-                    ->with([
-                        'reporter:id,name,email',
-                        'owner:id,name,email',
-                        'sourceControl',
-                        'correctiveAction:id,title,status',
-                        'actions.responsibleUser:id,name,email',
-                    ])
-                    ->where('tenant_id', $tenant->id)
-                    ->latest('detected_at')
-                    ->get(),
-                'actions' => IncidentAction::query()
-                    ->with(['incidentReport:id,reference,title,severity,status', 'responsibleUser:id,name,email'])
-                    ->where('tenant_id', $tenant->id)
-                    ->orderBy('due_date')
-                    ->get(),
-                'emergency_plans' => EmergencyResponsePlan::query()
-                    ->with([
-                        'owner:id,name,email',
-                        'relatedDocument:id,document_number,title,status',
-                        'drills.facilitator:id,name,email',
-                        'drills.correctiveAction:id,title,status',
-                    ])
-                    ->where('tenant_id', $tenant->id)
-                    ->orderBy('next_review_due_at')
-                    ->get(),
-                'emergency_drills' => EmergencyDrill::query()
-                    ->with([
-                        'emergencyResponsePlan:id,name,status',
-                        'facilitator:id,name,email',
-                        'correctiveAction:id,title,status',
-                    ])
-                    ->where('tenant_id', $tenant->id)
-                    ->latest('completed_at')
-                    ->limit(50)
-                    ->get(),
+                'incident_reports' => IncidentReportResource::collection(
+                    IncidentReport::query()
+                        ->with([
+                            'reporter:id,name,email,job_title',
+                            'owner:id,name,email,job_title',
+                            'sourceControl',
+                            'correctiveAction:id,title,status',
+                            'actions.responsibleUser:id,name,email,job_title',
+                        ])
+                        ->where('tenant_id', $tenant->id)
+                        ->latest('detected_at')
+                        ->get()
+                ),
+                'actions' => IncidentActionResource::collection(
+                    IncidentAction::query()
+                        ->with(['incidentReport:id,reference,title,severity,status', 'responsibleUser:id,name,email,job_title'])
+                        ->where('tenant_id', $tenant->id)
+                        ->orderBy('due_date')
+                        ->get()
+                ),
+                'emergency_plans' => EmergencyResponsePlanResource::collection(
+                    EmergencyResponsePlan::query()
+                        ->with([
+                            'owner:id,name,email,job_title',
+                            'relatedDocument:id,tenant_id,document_number,title,category,owner_id,current_version_id,status,created_at,updated_at',
+                            'drills.facilitator:id,name,email,job_title',
+                            'drills.correctiveAction:id,title,status',
+                        ])
+                        ->where('tenant_id', $tenant->id)
+                        ->orderBy('next_review_due_at')
+                        ->get()
+                ),
+                'emergency_drills' => EmergencyDrillResource::collection(
+                    EmergencyDrill::query()
+                        ->with([
+                            'emergencyResponsePlan:id,name,status',
+                            'facilitator:id,name,email,job_title',
+                            'correctiveAction:id,title,status',
+                        ])
+                        ->where('tenant_id', $tenant->id)
+                        ->latest('completed_at')
+                        ->limit(50)
+                        ->get()
+                ),
             ],
         ]);
     }
 
-    public function storeReport(Request $request, Tenant $tenant): JsonResponse
+    public function storeReport(StoreIncidentReportRequest $request, Tenant $tenant): JsonResponse
     {
-        $data = $request->validate([
-            'reference' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('incident_reports')->where('tenant_id', $tenant->id),
-            ],
-            'title' => ['required', 'string', 'max:255'],
-            'incident_type' => ['required', 'string', 'max:255'],
-            'severity' => ['required', 'in:Minor,Major,Critical'],
-            'status' => ['sometimes', 'string', 'max:255'],
-            'reported_by_id' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
-            'owner_id' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
-            'source_control_type' => ['nullable', 'required_with:source_control_id', 'in:ccp,oprp,prp'],
-            'source_control_id' => ['nullable', 'required_with:source_control_type', 'integer'],
-            'detected_at' => ['required', 'date'],
-            'description' => ['required', 'string'],
-            'immediate_containment' => ['nullable', 'string'],
-        ]);
+        $data = $request->validated();
 
         $sourceControl = $this->resolveSourceControl(
             $tenant,
@@ -129,22 +129,41 @@ class IncidentResponseController extends Controller
         });
 
         return response()->json([
-            'data' => $report->load(['reporter:id,name,email', 'owner:id,name,email', 'sourceControl', 'correctiveAction:id,title,status']),
+            'data' => new IncidentReportResource($report->load(['reporter:id,name,email,job_title', 'owner:id,name,email,job_title', 'sourceControl', 'correctiveAction:id,title,status'])),
         ], 201);
     }
 
-    public function storeAction(Request $request, Tenant $tenant, IncidentReport $incidentReport): JsonResponse
+    public function updateReport(UpdateIncidentReportRequest $request, Tenant $tenant, IncidentReport $incidentReport): JsonResponse
     {
         abort_unless((int) $incidentReport->tenant_id === (int) $tenant->id, 404);
 
-        $data = $request->validate([
-            'action_type' => ['required', 'string', 'max:255'],
-            'description' => ['required', 'string'],
-            'responsible_user_id' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
-            'due_date' => ['nullable', 'date'],
-            'completed_at' => ['nullable', 'date'],
-            'status' => ['sometimes', 'string', 'max:255'],
-        ]);
+        $data = $request->validated();
+        $sourceControl = array_key_exists('source_control_type', $data) || array_key_exists('source_control_id', $data)
+            ? $this->resolveSourceControl(
+                $tenant,
+                $data['source_control_type'] ?? null,
+                isset($data['source_control_id']) ? (int) $data['source_control_id'] : null,
+            )
+            : null;
+
+        if (array_key_exists('source_control_type', $data) || array_key_exists('source_control_id', $data)) {
+            $data['source_control_type'] = $sourceControl ? $sourceControl::class : null;
+            $data['source_control_id'] = $sourceControl?->id;
+        }
+
+        $oldValues = $incidentReport->toArray();
+        $incidentReport->update($data);
+
+        $this->audit($request, $tenant, 'incident_response.report.updated', IncidentReport::class, $incidentReport->id, $oldValues, $incidentReport->fresh()->toArray());
+
+        return response()->json(['data' => new IncidentReportResource($incidentReport->fresh(['reporter:id,name,email,job_title', 'owner:id,name,email,job_title', 'sourceControl', 'correctiveAction:id,title,status']))]);
+    }
+
+    public function storeAction(StoreIncidentActionRequest $request, Tenant $tenant, IncidentReport $incidentReport): JsonResponse
+    {
+        abort_unless((int) $incidentReport->tenant_id === (int) $tenant->id, 404);
+
+        $data = $request->validated();
 
         $action = IncidentAction::create([
             ...$data,
@@ -156,22 +175,15 @@ class IncidentResponseController extends Controller
         $this->audit($request, $tenant, 'incident_response.action.created', IncidentAction::class, $action->id, [], $action->toArray());
 
         return response()->json([
-            'data' => $action->load(['incidentReport:id,reference,title,severity,status', 'responsibleUser:id,name,email']),
+            'data' => new IncidentActionResource($action->load(['incidentReport:id,reference,title,severity,status', 'responsibleUser:id,name,email,job_title'])),
         ], 201);
     }
 
-    public function updateAction(Request $request, Tenant $tenant, IncidentAction $incidentAction): JsonResponse
+    public function updateAction(UpdateIncidentActionRequest $request, Tenant $tenant, IncidentAction $incidentAction): JsonResponse
     {
         abort_unless((int) $incidentAction->tenant_id === (int) $tenant->id, 404);
 
-        $data = $request->validate([
-            'action_type' => ['sometimes', 'string', 'max:255'],
-            'description' => ['sometimes', 'string'],
-            'responsible_user_id' => ['sometimes', 'nullable', Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
-            'due_date' => ['sometimes', 'nullable', 'date'],
-            'completed_at' => ['sometimes', 'nullable', 'date'],
-            'status' => ['sometimes', 'string', 'max:255'],
-        ]);
+        $data = $request->validated();
 
         $oldValues = $incidentAction->toArray();
         $incidentAction->update($data);
@@ -179,24 +191,13 @@ class IncidentResponseController extends Controller
         $this->audit($request, $tenant, 'incident_response.action.updated', IncidentAction::class, $incidentAction->id, $oldValues, $incidentAction->fresh()->toArray());
 
         return response()->json([
-            'data' => $incidentAction->load(['incidentReport:id,reference,title,severity,status', 'responsibleUser:id,name,email']),
+            'data' => new IncidentActionResource($incidentAction->load(['incidentReport:id,reference,title,severity,status', 'responsibleUser:id,name,email,job_title'])),
         ]);
     }
 
-    public function storePlan(Request $request, Tenant $tenant): JsonResponse
+    public function storePlan(StoreEmergencyResponsePlanRequest $request, Tenant $tenant): JsonResponse
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'scenario' => ['required', 'string'],
-            'owner_id' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
-            'related_document_id' => ['nullable', Rule::exists('documents', 'id')->where('tenant_id', $tenant->id)],
-            'review_frequency_days' => ['sometimes', 'integer', 'min:1', 'max:3660'],
-            'last_reviewed_at' => ['nullable', 'date'],
-            'next_review_due_at' => ['nullable', 'date'],
-            'response_steps' => ['nullable', 'array'],
-            'response_steps.*' => ['string', 'max:255'],
-            'status' => ['sometimes', 'string', 'max:255'],
-        ]);
+        $data = $request->validated();
 
         $plan = EmergencyResponsePlan::create([
             ...$data,
@@ -208,24 +209,28 @@ class IncidentResponseController extends Controller
         $this->audit($request, $tenant, 'incident_response.plan.created', EmergencyResponsePlan::class, $plan->id, [], $plan->toArray());
 
         return response()->json([
-            'data' => $plan->load(['owner:id,name,email', 'relatedDocument:id,document_number,title,status']),
+            'data' => new EmergencyResponsePlanResource($plan->load(['owner:id,name,email,job_title', 'relatedDocument:id,tenant_id,document_number,title,category,owner_id,current_version_id,status,created_at,updated_at'])),
         ], 201);
     }
 
-    public function storeDrill(Request $request, Tenant $tenant, EmergencyResponsePlan $emergencyResponsePlan): JsonResponse
+    public function updatePlan(UpdateEmergencyResponsePlanRequest $request, Tenant $tenant, EmergencyResponsePlan $emergencyResponsePlan): JsonResponse
     {
         abort_unless((int) $emergencyResponsePlan->tenant_id === (int) $tenant->id, 404);
 
-        $data = $request->validate([
-            'facilitator_id' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
-            'scheduled_at' => ['nullable', 'date'],
-            'completed_at' => ['required', 'date'],
-            'result' => ['required', 'in:Effective,Needs Improvement,Failed'],
-            'participants_count' => ['sometimes', 'integer', 'min:0', 'max:10000'],
-            'effectiveness_score' => ['nullable', 'integer', 'min:0', 'max:100'],
-            'scenario_notes' => ['nullable', 'string'],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $data = $request->validated();
+        $oldValues = $emergencyResponsePlan->toArray();
+        $emergencyResponsePlan->update($data);
+
+        $this->audit($request, $tenant, 'incident_response.plan.updated', EmergencyResponsePlan::class, $emergencyResponsePlan->id, $oldValues, $emergencyResponsePlan->fresh()->toArray());
+
+        return response()->json(['data' => new EmergencyResponsePlanResource($emergencyResponsePlan->fresh(['owner:id,name,email,job_title', 'relatedDocument:id,tenant_id,document_number,title,category,owner_id,current_version_id,status,created_at,updated_at']))]);
+    }
+
+    public function storeDrill(StoreEmergencyDrillRequest $request, Tenant $tenant, EmergencyResponsePlan $emergencyResponsePlan): JsonResponse
+    {
+        abort_unless((int) $emergencyResponsePlan->tenant_id === (int) $tenant->id, 404);
+
+        $data = $request->validated();
 
         $drill = DB::transaction(function () use ($data, $emergencyResponsePlan, $request, $tenant): EmergencyDrill {
             $correctiveAction = null;
@@ -269,7 +274,7 @@ class IncidentResponseController extends Controller
         });
 
         return response()->json([
-            'data' => $drill->load(['emergencyResponsePlan:id,name,status,next_review_due_at', 'facilitator:id,name,email', 'correctiveAction:id,title,status']),
+            'data' => new EmergencyDrillResource($drill->load(['emergencyResponsePlan:id,name,status,next_review_due_at', 'facilitator:id,name,email,job_title', 'correctiveAction:id,title,status'])),
         ], 201);
     }
 

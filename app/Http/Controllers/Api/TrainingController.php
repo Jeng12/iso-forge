@@ -3,6 +3,19 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreAwarenessAcknowledgementRequest;
+use App\Http\Requests\StoreCompetencyRequirementRequest;
+use App\Http\Requests\StoreTrainingAssignmentRequest;
+use App\Http\Requests\StoreTrainingProgramRequest;
+use App\Http\Requests\StoreTrainingRecordRequest;
+use App\Http\Requests\UpdateTrainingAssignmentRequest;
+use App\Http\Requests\UpdateTrainingProgramRequest;
+use App\Http\Resources\AwarenessAcknowledgementResource;
+use App\Http\Resources\CompetencyRequirementResource;
+use App\Http\Resources\RoleResource;
+use App\Http\Resources\TrainingAssignmentResource;
+use App\Http\Resources\TrainingProgramResource;
+use App\Http\Resources\TrainingRecordResource;
 use App\Models\AuditLog;
 use App\Models\AwarenessAcknowledgement;
 use App\Models\CompetencyRequirement;
@@ -15,7 +28,6 @@ use App\Models\TrainingRecord;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 
 class TrainingController extends Controller
 {
@@ -23,58 +35,56 @@ class TrainingController extends Controller
     {
         return response()->json([
             'data' => [
-                'programs' => TrainingProgram::query()
-                    ->with(['owner:id,name,email', 'competencyRequirements.role:id,name,slug'])
-                    ->where('tenant_id', $tenant->id)
-                    ->orderBy('code')
-                    ->get(),
-                'requirements' => CompetencyRequirement::query()
-                    ->with(['role:id,name,slug', 'trainingProgram:id,code,title,status'])
-                    ->where('tenant_id', $tenant->id)
-                    ->orderBy('competency_area')
-                    ->get(),
-                'assignments' => TrainingAssignment::query()
-                    ->with(['trainingProgram:id,code,title', 'user:id,name,email,job_title', 'assigner:id,name,email', 'requiredForRole:id,name,slug'])
-                    ->where('tenant_id', $tenant->id)
-                    ->orderBy('due_date')
-                    ->get(),
-                'records' => TrainingRecord::query()
-                    ->with(['trainingProgram:id,code,title', 'user:id,name,email', 'trainer:id,name,email', 'evidenceDocument:id,document_number,title,status', 'correctiveAction:id,title,status'])
-                    ->where('tenant_id', $tenant->id)
-                    ->latest('completed_at')
-                    ->limit(50)
-                    ->get(),
-                'awareness_acknowledgements' => AwarenessAcknowledgement::query()
-                    ->with(['document:id,document_number,title,status', 'user:id,name,email', 'acknowledger:id,name,email'])
-                    ->where('tenant_id', $tenant->id)
-                    ->latest('acknowledged_at')
-                    ->limit(50)
-                    ->get(),
-                'roles' => Role::query()
-                    ->where('tenant_id', $tenant->id)
-                    ->orderBy('name')
-                    ->get(['id', 'tenant_id', 'name', 'slug']),
+                'programs' => TrainingProgramResource::collection(
+                    TrainingProgram::query()
+                        ->with(['owner:id,name,email,job_title', 'competencyRequirements.role:id,name,slug'])
+                        ->where('tenant_id', $tenant->id)
+                        ->orderBy('code')
+                        ->get()
+                ),
+                'requirements' => CompetencyRequirementResource::collection(
+                    CompetencyRequirement::query()
+                        ->with(['role:id,name,slug', 'trainingProgram:id,tenant_id,code,title,iso_clause,delivery_method,owner_id,refresher_interval_days,status,description,created_at,updated_at'])
+                        ->where('tenant_id', $tenant->id)
+                        ->orderBy('competency_area')
+                        ->get()
+                ),
+                'assignments' => TrainingAssignmentResource::collection(
+                    TrainingAssignment::query()
+                        ->with(['trainingProgram:id,tenant_id,code,title,iso_clause,delivery_method,owner_id,refresher_interval_days,status,description,created_at,updated_at', 'user:id,name,email,job_title', 'assigner:id,name,email,job_title', 'requiredForRole:id,name,slug'])
+                        ->where('tenant_id', $tenant->id)
+                        ->orderBy('due_date')
+                        ->get()
+                ),
+                'records' => TrainingRecordResource::collection(
+                    TrainingRecord::query()
+                        ->with(['trainingProgram:id,tenant_id,code,title,iso_clause,delivery_method,owner_id,refresher_interval_days,status,description,created_at,updated_at', 'user:id,name,email,job_title', 'trainer:id,name,email,job_title', 'evidenceDocument:id,tenant_id,document_number,title,category,owner_id,current_version_id,status,created_at,updated_at', 'correctiveAction:id,title,status'])
+                        ->where('tenant_id', $tenant->id)
+                        ->latest('completed_at')
+                        ->limit(50)
+                        ->get()
+                ),
+                'awareness_acknowledgements' => AwarenessAcknowledgementResource::collection(
+                    AwarenessAcknowledgement::query()
+                        ->with(['document:id,tenant_id,document_number,title,category,owner_id,current_version_id,status,created_at,updated_at', 'user:id,name,email,job_title', 'acknowledger:id,name,email,job_title'])
+                        ->where('tenant_id', $tenant->id)
+                        ->latest('acknowledged_at')
+                        ->limit(50)
+                        ->get()
+                ),
+                'roles' => RoleResource::collection(
+                    Role::query()
+                        ->where('tenant_id', $tenant->id)
+                        ->orderBy('name')
+                        ->get(['id', 'tenant_id', 'name', 'slug'])
+                ),
             ],
         ]);
     }
 
-    public function storeProgram(Request $request, Tenant $tenant): JsonResponse
+    public function storeProgram(StoreTrainingProgramRequest $request, Tenant $tenant): JsonResponse
     {
-        $data = $request->validate([
-            'code' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('training_programs')->where('tenant_id', $tenant->id),
-            ],
-            'title' => ['required', 'string', 'max:255'],
-            'iso_clause' => ['nullable', 'string', 'max:255'],
-            'delivery_method' => ['sometimes', 'string', 'max:255'],
-            'owner_id' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
-            'refresher_interval_days' => ['nullable', 'integer', 'min:1', 'max:3660'],
-            'status' => ['sometimes', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-        ]);
+        $data = $request->validated();
 
         $program = TrainingProgram::create([
             ...$data,
@@ -85,20 +95,25 @@ class TrainingController extends Controller
 
         $this->audit($request, $tenant, 'training.program.created', TrainingProgram::class, $program->id, [], $program->toArray());
 
-        return response()->json(['data' => $program->load('owner:id,name,email')], 201);
+        return response()->json(['data' => new TrainingProgramResource($program->load('owner:id,name,email,job_title'))], 201);
     }
 
-    public function storeRequirement(Request $request, Tenant $tenant): JsonResponse
+    public function updateProgram(UpdateTrainingProgramRequest $request, Tenant $tenant, TrainingProgram $trainingProgram): JsonResponse
     {
-        $data = $request->validate([
-            'role_id' => ['required', Rule::exists('roles', 'id')->where('tenant_id', $tenant->id)],
-            'training_program_id' => ['required', Rule::exists('training_programs', 'id')->where('tenant_id', $tenant->id)],
-            'competency_area' => ['required', 'string', 'max:255'],
-            'required_level' => ['sometimes', 'string', 'max:255'],
-            'assessment_method' => ['sometimes', 'string', 'max:255'],
-            'due_within_days' => ['sometimes', 'integer', 'min:1', 'max:3660'],
-            'is_mandatory' => ['sometimes', 'boolean'],
-        ]);
+        abort_unless((int) $trainingProgram->tenant_id === (int) $tenant->id, 404);
+
+        $data = $request->validated();
+        $oldValues = $trainingProgram->toArray();
+        $trainingProgram->update($data);
+
+        $this->audit($request, $tenant, 'training.program.updated', TrainingProgram::class, $trainingProgram->id, $oldValues, $trainingProgram->fresh()->toArray());
+
+        return response()->json(['data' => new TrainingProgramResource($trainingProgram->fresh('owner:id,name,email,job_title'))]);
+    }
+
+    public function storeRequirement(StoreCompetencyRequirementRequest $request, Tenant $tenant): JsonResponse
+    {
+        $data = $request->validated();
 
         $requirement = CompetencyRequirement::create([
             ...$data,
@@ -111,21 +126,14 @@ class TrainingController extends Controller
 
         $this->audit($request, $tenant, 'training.requirement.created', CompetencyRequirement::class, $requirement->id, [], $requirement->toArray());
 
-        return response()->json(['data' => $requirement->load(['role:id,name,slug', 'trainingProgram:id,code,title'])], 201);
+        return response()->json(['data' => new CompetencyRequirementResource($requirement->load(['role:id,name,slug', 'trainingProgram:id,tenant_id,code,title,iso_clause,delivery_method,owner_id,refresher_interval_days,status,description,created_at,updated_at']))], 201);
     }
 
-    public function storeAssignment(Request $request, Tenant $tenant, TrainingProgram $trainingProgram): JsonResponse
+    public function storeAssignment(StoreTrainingAssignmentRequest $request, Tenant $tenant, TrainingProgram $trainingProgram): JsonResponse
     {
         abort_unless((int) $trainingProgram->tenant_id === (int) $tenant->id, 404);
 
-        $data = $request->validate([
-            'user_id' => ['required', Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
-            'assigned_by_id' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
-            'required_for_role_id' => ['nullable', Rule::exists('roles', 'id')->where('tenant_id', $tenant->id)],
-            'due_date' => ['required', 'date'],
-            'status' => ['sometimes', 'string', 'max:255'],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $data = $request->validated();
 
         $assignment = TrainingAssignment::create([
             ...$data,
@@ -138,24 +146,28 @@ class TrainingController extends Controller
         $this->audit($request, $tenant, 'training.assignment.created', TrainingAssignment::class, $assignment->id, [], $assignment->toArray());
 
         return response()->json([
-            'data' => $assignment->load(['trainingProgram:id,code,title', 'user:id,name,email,job_title', 'assigner:id,name,email', 'requiredForRole:id,name,slug']),
+            'data' => new TrainingAssignmentResource($assignment->load(['trainingProgram:id,tenant_id,code,title,iso_clause,delivery_method,owner_id,refresher_interval_days,status,description,created_at,updated_at', 'user:id,name,email,job_title', 'assigner:id,name,email,job_title', 'requiredForRole:id,name,slug'])),
         ], 201);
     }
 
-    public function storeRecord(Request $request, Tenant $tenant, TrainingAssignment $trainingAssignment): JsonResponse
+    public function updateAssignment(UpdateTrainingAssignmentRequest $request, Tenant $tenant, TrainingAssignment $trainingAssignment): JsonResponse
     {
         abort_unless((int) $trainingAssignment->tenant_id === (int) $tenant->id, 404);
 
-        $data = $request->validate([
-            'trainer_id' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
-            'evidence_document_id' => ['nullable', Rule::exists('documents', 'id')->where('tenant_id', $tenant->id)],
-            'completed_at' => ['required', 'date'],
-            'score' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'result' => ['required', 'in:Pass,Fail'],
-            'competency_status' => ['required', 'in:Competent,Needs Coaching'],
-            'expires_at' => ['nullable', 'date'],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $data = $request->validated();
+        $oldValues = $trainingAssignment->toArray();
+        $trainingAssignment->update($data);
+
+        $this->audit($request, $tenant, 'training.assignment.updated', TrainingAssignment::class, $trainingAssignment->id, $oldValues, $trainingAssignment->fresh()->toArray());
+
+        return response()->json(['data' => new TrainingAssignmentResource($trainingAssignment->fresh(['trainingProgram:id,tenant_id,code,title,iso_clause,delivery_method,owner_id,refresher_interval_days,status,description,created_at,updated_at', 'user:id,name,email,job_title', 'assigner:id,name,email,job_title', 'requiredForRole:id,name,slug']))]);
+    }
+
+    public function storeRecord(StoreTrainingRecordRequest $request, Tenant $tenant, TrainingAssignment $trainingAssignment): JsonResponse
+    {
+        abort_unless((int) $trainingAssignment->tenant_id === (int) $tenant->id, 404);
+
+        $data = $request->validated();
 
         $record = DB::transaction(function () use ($data, $request, $tenant, $trainingAssignment): TrainingRecord {
             $correctiveAction = null;
@@ -198,20 +210,13 @@ class TrainingController extends Controller
         });
 
         return response()->json([
-            'data' => $record->load(['trainingProgram:id,code,title', 'user:id,name,email', 'trainer:id,name,email', 'evidenceDocument:id,document_number,title,status', 'correctiveAction:id,title,status']),
+            'data' => new TrainingRecordResource($record->load(['trainingProgram:id,tenant_id,code,title,iso_clause,delivery_method,owner_id,refresher_interval_days,status,description,created_at,updated_at', 'user:id,name,email,job_title', 'trainer:id,name,email,job_title', 'evidenceDocument:id,tenant_id,document_number,title,category,owner_id,current_version_id,status,created_at,updated_at', 'correctiveAction:id,title,status'])),
         ], 201);
     }
 
-    public function storeAwarenessAcknowledgement(Request $request, Tenant $tenant): JsonResponse
+    public function storeAwarenessAcknowledgement(StoreAwarenessAcknowledgementRequest $request, Tenant $tenant): JsonResponse
     {
-        $data = $request->validate([
-            'document_id' => ['required', Rule::exists('documents', 'id')->where('tenant_id', $tenant->id)],
-            'user_id' => ['required', Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
-            'acknowledged_by_id' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $tenant->id)],
-            'acknowledged_at' => ['nullable', 'date'],
-            'status' => ['sometimes', 'string', 'max:255'],
-            'statement' => ['nullable', 'string'],
-        ]);
+        $data = $request->validated();
 
         $oldValues = AwarenessAcknowledgement::query()
             ->where('document_id', $data['document_id'])
@@ -244,7 +249,7 @@ class TrainingController extends Controller
         );
 
         return response()->json([
-            'data' => $acknowledgement->load(['document:id,document_number,title,status', 'user:id,name,email', 'acknowledger:id,name,email']),
+            'data' => new AwarenessAcknowledgementResource($acknowledgement->load(['document:id,tenant_id,document_number,title,category,owner_id,current_version_id,status,created_at,updated_at', 'user:id,name,email,job_title', 'acknowledger:id,name,email,job_title'])),
         ], $oldValues ? 200 : 201);
     }
 

@@ -75,6 +75,7 @@ if (root) {
         documentsBody: document.getElementById('documents-body'),
         documentEditSelect: document.getElementById('document-edit-select'),
         documentVersionDocumentSelect: document.getElementById('document-version-document-select'),
+        documentRetentionList: document.getElementById('document-retention-list'),
         approvalList: document.getElementById('approval-list'),
         risksBody: document.getElementById('risks-body'),
         capaList: document.getElementById('capa-list'),
@@ -85,7 +86,9 @@ if (root) {
         documentVersionForm: document.getElementById('document-version-form'),
         riskForm: document.getElementById('risk-form'),
         objectivesBody: document.getElementById('qms-objectives-body'),
+        objectiveEditSelect: document.getElementById('objective-edit-select'),
         auditsBody: document.getElementById('qms-audits-body'),
+        auditEditSelect: document.getElementById('audit-edit-select'),
         findingsList: document.getElementById('qms-findings-list'),
         reviewsList: document.getElementById('qms-reviews-list'),
         fsmsPlansBody: document.getElementById('fsms-plans-body'),
@@ -94,6 +97,7 @@ if (root) {
         fsmsMonitoringList: document.getElementById('fsms-monitoring-list'),
         fsmsPrpsList: document.getElementById('fsms-prps-list'),
         fsmsMonitorableSelect: document.getElementById('fsms-monitorable-select'),
+        haccpPlanEditSelect: document.getElementById('haccp-plan-edit-select'),
         supplierQualitySuppliersBody: document.getElementById('supplier-quality-suppliers-body'),
         supplierQualityEquipmentBody: document.getElementById('supplier-quality-equipment-body'),
         supplierQualityEvaluationsList: document.getElementById('supplier-quality-evaluations-list'),
@@ -101,6 +105,8 @@ if (root) {
         supplierQualityCertificatesList: document.getElementById('supplier-quality-certificates-list'),
         supplierQualitySupplierSelect: document.getElementById('supplier-quality-supplier-select'),
         supplierQualityEquipmentSelect: document.getElementById('supplier-quality-equipment-select'),
+        supplierEditSelect: document.getElementById('supplier-edit-select'),
+        equipmentEditSelect: document.getElementById('equipment-edit-select'),
         trainingProgramsBody: document.getElementById('training-programs-body'),
         trainingAssignmentsList: document.getElementById('training-assignments-list'),
         trainingRecordsList: document.getElementById('training-records-list'),
@@ -113,6 +119,9 @@ if (root) {
         trainingRequirementRoleSelect: document.getElementById('training-requirement-role-select'),
         trainingRequirementProgramSelect: document.getElementById('training-requirement-program-select'),
         trainingAwarenessDocumentSelect: document.getElementById('training-awareness-document-select'),
+        trainingProgramEditSelect: document.getElementById('training-program-edit-select'),
+        trainingAssignmentEditSelect: document.getElementById('training-assignment-edit-select'),
+        trainingAssignmentEditRoleSelect: document.getElementById('training-assignment-edit-role-select'),
         analyticsSummaryGrid: document.getElementById('analytics-summary-grid'),
         analyticsIncidentList: document.getElementById('analytics-incident-list'),
         analyticsCapaList: document.getElementById('analytics-capa-list'),
@@ -128,22 +137,33 @@ if (root) {
         incidentSourceControlSelect: document.getElementById('incident-source-control-select'),
         incidentReportSelect: document.getElementById('incident-report-select'),
         emergencyPlanSelect: document.getElementById('emergency-plan-select'),
+        incidentReportEditSelect: document.getElementById('incident-report-edit-select'),
+        emergencyPlanEditSelect: document.getElementById('emergency-plan-edit-select'),
         objectiveForm: document.getElementById('objective-form'),
+        objectiveEditForm: document.getElementById('objective-edit-form'),
         auditForm: document.getElementById('audit-form'),
+        auditEditForm: document.getElementById('audit-edit-form'),
         haccpPlanForm: document.getElementById('haccp-plan-form'),
+        haccpPlanEditForm: document.getElementById('haccp-plan-edit-form'),
         monitoringForm: document.getElementById('monitoring-form'),
         supplierForm: document.getElementById('supplier-form'),
+        supplierEditForm: document.getElementById('supplier-edit-form'),
         supplierEvaluationForm: document.getElementById('supplier-evaluation-form'),
         equipmentForm: document.getElementById('equipment-form'),
+        equipmentEditForm: document.getElementById('equipment-edit-form'),
         calibrationForm: document.getElementById('calibration-form'),
         trainingProgramForm: document.getElementById('training-program-form'),
+        trainingProgramEditForm: document.getElementById('training-program-edit-form'),
         trainingRequirementForm: document.getElementById('training-requirement-form'),
         trainingAssignmentForm: document.getElementById('training-assignment-form'),
+        trainingAssignmentEditForm: document.getElementById('training-assignment-edit-form'),
         trainingRecordForm: document.getElementById('training-record-form'),
         trainingAwarenessForm: document.getElementById('training-awareness-form'),
         incidentReportForm: document.getElementById('incident-report-form'),
+        incidentReportEditForm: document.getElementById('incident-report-edit-form'),
         incidentActionForm: document.getElementById('incident-action-form'),
         emergencyPlanForm: document.getElementById('emergency-plan-form'),
+        emergencyPlanEditForm: document.getElementById('emergency-plan-edit-form'),
         emergencyDrillForm: document.getElementById('emergency-drill-form'),
         capaForm: document.getElementById('capa-form'),
     };
@@ -164,6 +184,13 @@ if (root) {
             form.delete(key);
         }
     };
+
+    const dateValue = (value) => value ? String(value).slice(0, 10) : '';
+    const dateTimeValue = (value) => value ? String(value).replace(' ', 'T').slice(0, 16) : '';
+
+    const optionHtml = (items, labelFor) => (items ?? []).map((item) => {
+        return `<option value="${item.id}">${escapeHtml(labelFor(item))}</option>`;
+    }).join('');
 
     const api = async (path, options = {}) => {
         const isFormData = options.body instanceof FormData;
@@ -321,6 +348,33 @@ if (root) {
 
         els.approvalList.innerHTML = approvalRows || '<div class="p-4 text-sm text-zinc-500">No approvals found.</div>';
         els.overviewApprovals.innerHTML = approvalRows || '<div class="p-4 text-sm text-zinc-500">No approvals found.</div>';
+
+        const supersededVersions = state.documents.flatMap((document) => {
+            return (document.versions ?? [])
+                .filter((version) => version.status === 'Superseded' || version.superseded_at)
+                .map((version) => ({ document, version }));
+        });
+
+        els.documentRetentionList.innerHTML = supersededVersions.map(({ document, version }) => {
+            const retained = version.retention_until ? `retain until ${escapeHtml(version.retention_until)}` : 'no retention date';
+            const reviewed = version.superseded_reviewed_at ? 'Reviewed' : 'Review';
+            const pruneButton = version.pruned_at
+                ? renderStatusBadge('Pruned')
+                : `<button data-prune-document-id="${document.id}" data-prune-version-id="${version.id}" class="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50">Prune</button>`;
+
+            return `
+                <div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <div class="font-medium">${escapeHtml(document.document_number)} v${escapeHtml(version.version_number)}</div>
+                        <div class="mt-1 text-sm text-zinc-600">${retained}${version.pruned_at ? ` - pruned ${escapeHtml(version.pruned_at.slice(0, 10))}` : ''}</div>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button data-review-superseded-document-id="${document.id}" data-review-superseded-version-id="${version.id}" class="rounded-lg bg-zinc-950 px-3 py-2 text-sm font-semibold text-white hover:bg-zinc-800">${reviewed}</button>
+                        ${pruneButton}
+                    </div>
+                </div>
+            `;
+        }).join('') || '<div class="p-4 text-sm text-zinc-500">No superseded versions found.</div>';
     };
 
     const fillDocumentEditForm = () => {
@@ -339,6 +393,118 @@ if (root) {
         els.documentEditForm.elements.category.value = document.category ?? '';
         els.documentEditForm.elements.owner_id.value = document.owner_id ?? '';
         els.documentEditForm.elements.status.value = document.status ?? 'Draft';
+    };
+
+    const fillObjectiveEditForm = () => {
+        const objective = (state.qms.objectives ?? []).find((item) => String(item.id) === String(els.objectiveEditSelect.value)) ?? state.qms.objectives?.[0];
+        if (!objective) return;
+        els.objectiveEditSelect.value = objective.id;
+        els.objectiveEditForm.elements.title.value = objective.title ?? '';
+        els.objectiveEditForm.elements.measurement_method.value = objective.measurement_method ?? '';
+        els.objectiveEditForm.elements.target_value.value = objective.target_value ?? '';
+        els.objectiveEditForm.elements.current_value.value = objective.current_value ?? '';
+        els.objectiveEditForm.elements.owner_id.value = objective.owner_id ?? '';
+        els.objectiveEditForm.elements.due_date.value = dateValue(objective.due_date);
+        els.objectiveEditForm.elements.status.value = objective.status ?? 'Active';
+    };
+
+    const fillAuditEditForm = () => {
+        const audit = (state.qms.audits ?? []).find((item) => String(item.id) === String(els.auditEditSelect.value)) ?? state.qms.audits?.[0];
+        if (!audit) return;
+        els.auditEditSelect.value = audit.id;
+        els.auditEditForm.elements.title.value = audit.title ?? '';
+        els.auditEditForm.elements.scope.value = audit.scope ?? '';
+        els.auditEditForm.elements.lead_auditor_id.value = audit.lead_auditor_id ?? '';
+        els.auditEditForm.elements.scheduled_date.value = dateValue(audit.scheduled_date);
+        els.auditEditForm.elements.status.value = audit.status ?? 'Planned';
+        els.auditEditForm.elements.summary.value = audit.summary ?? '';
+    };
+
+    const fillHaccpPlanEditForm = () => {
+        const plan = (state.fsms.haccp_plans ?? []).find((item) => String(item.id) === String(els.haccpPlanEditSelect.value)) ?? state.fsms.haccp_plans?.[0];
+        if (!plan) return;
+        els.haccpPlanEditSelect.value = plan.id;
+        els.haccpPlanEditForm.elements.name.value = plan.name ?? '';
+        els.haccpPlanEditForm.elements.product.value = plan.product ?? '';
+        els.haccpPlanEditForm.elements.scope.value = plan.scope ?? '';
+        els.haccpPlanEditForm.elements.owner_id.value = plan.owner_id ?? '';
+        els.haccpPlanEditForm.elements.effective_date.value = dateValue(plan.effective_date);
+        els.haccpPlanEditForm.elements.status.value = plan.status ?? 'Draft';
+    };
+
+    const fillSupplierEditForm = () => {
+        const supplier = (state.supplierQuality.suppliers ?? []).find((item) => String(item.id) === String(els.supplierEditSelect.value)) ?? state.supplierQuality.suppliers?.[0];
+        if (!supplier) return;
+        els.supplierEditSelect.value = supplier.id;
+        els.supplierEditForm.elements.name.value = supplier.name ?? '';
+        els.supplierEditForm.elements.category.value = supplier.category ?? '';
+        els.supplierEditForm.elements.contact_email.value = supplier.contact_email ?? '';
+        els.supplierEditForm.elements.owner_id.value = supplier.owner_id ?? '';
+        els.supplierEditForm.elements.approval_status.value = supplier.approval_status ?? 'Pending';
+        els.supplierEditForm.elements.risk_level.value = supplier.risk_level ?? 'Medium';
+        els.supplierEditForm.elements.approved_until.value = dateValue(supplier.approved_until);
+    };
+
+    const fillEquipmentEditForm = () => {
+        const asset = (state.supplierQuality.equipment_assets ?? []).find((item) => String(item.id) === String(els.equipmentEditSelect.value)) ?? state.supplierQuality.equipment_assets?.[0];
+        if (!asset) return;
+        els.equipmentEditSelect.value = asset.id;
+        els.equipmentEditForm.elements.asset_tag.value = asset.asset_tag ?? '';
+        els.equipmentEditForm.elements.name.value = asset.name ?? '';
+        els.equipmentEditForm.elements.location.value = asset.location ?? '';
+        els.equipmentEditForm.elements.owner_id.value = asset.owner_id ?? '';
+        els.equipmentEditForm.elements.calibration_interval_days.value = asset.calibration_interval_days ?? '';
+        els.equipmentEditForm.elements.status.value = asset.status ?? 'Active';
+        els.equipmentEditForm.elements.critical_to_food_safety.checked = Boolean(asset.critical_to_food_safety);
+    };
+
+    const fillTrainingProgramEditForm = () => {
+        const program = (state.training.programs ?? []).find((item) => String(item.id) === String(els.trainingProgramEditSelect.value)) ?? state.training.programs?.[0];
+        if (!program) return;
+        els.trainingProgramEditSelect.value = program.id;
+        els.trainingProgramEditForm.elements.code.value = program.code ?? '';
+        els.trainingProgramEditForm.elements.title.value = program.title ?? '';
+        els.trainingProgramEditForm.elements.iso_clause.value = program.iso_clause ?? '';
+        els.trainingProgramEditForm.elements.delivery_method.value = program.delivery_method ?? '';
+        els.trainingProgramEditForm.elements.owner_id.value = program.owner_id ?? '';
+        els.trainingProgramEditForm.elements.refresher_interval_days.value = program.refresher_interval_days ?? '';
+        els.trainingProgramEditForm.elements.status.value = program.status ?? 'Active';
+    };
+
+    const fillTrainingAssignmentEditForm = () => {
+        const assignment = (state.training.assignments ?? []).find((item) => String(item.id) === String(els.trainingAssignmentEditSelect.value)) ?? state.training.assignments?.[0];
+        if (!assignment) return;
+        els.trainingAssignmentEditSelect.value = assignment.id;
+        els.trainingAssignmentEditForm.elements.user_id.value = assignment.user_id ?? '';
+        els.trainingAssignmentEditForm.elements.required_for_role_id.value = assignment.required_for_role_id ?? '';
+        els.trainingAssignmentEditForm.elements.due_date.value = dateValue(assignment.due_date);
+        els.trainingAssignmentEditForm.elements.status.value = assignment.status ?? 'Assigned';
+        els.trainingAssignmentEditForm.elements.notes.value = assignment.notes ?? '';
+    };
+
+    const fillIncidentReportEditForm = () => {
+        const report = (state.incidentResponse.incident_reports ?? []).find((item) => String(item.id) === String(els.incidentReportEditSelect.value)) ?? state.incidentResponse.incident_reports?.[0];
+        if (!report) return;
+        els.incidentReportEditSelect.value = report.id;
+        els.incidentReportEditForm.elements.title.value = report.title ?? '';
+        els.incidentReportEditForm.elements.severity.value = report.severity ?? 'Minor';
+        els.incidentReportEditForm.elements.status.value = report.status ?? 'Open';
+        els.incidentReportEditForm.elements.owner_id.value = report.owner_id ?? '';
+        els.incidentReportEditForm.elements.detected_at.value = dateTimeValue(report.detected_at);
+        els.incidentReportEditForm.elements.description.value = report.description ?? '';
+        els.incidentReportEditForm.elements.immediate_containment.value = report.immediate_containment ?? '';
+    };
+
+    const fillEmergencyPlanEditForm = () => {
+        const plan = (state.incidentResponse.emergency_plans ?? []).find((item) => String(item.id) === String(els.emergencyPlanEditSelect.value)) ?? state.incidentResponse.emergency_plans?.[0];
+        if (!plan) return;
+        els.emergencyPlanEditSelect.value = plan.id;
+        els.emergencyPlanEditForm.elements.name.value = plan.name ?? '';
+        els.emergencyPlanEditForm.elements.scenario.value = plan.scenario ?? '';
+        els.emergencyPlanEditForm.elements.owner_id.value = plan.owner_id ?? '';
+        els.emergencyPlanEditForm.elements.review_frequency_days.value = plan.review_frequency_days ?? 365;
+        els.emergencyPlanEditForm.elements.status.value = plan.status ?? 'Active';
+        els.emergencyPlanEditForm.elements.response_steps.value = (plan.response_steps ?? []).join('\n');
     };
 
     const renderRisks = () => {
@@ -402,6 +568,11 @@ if (root) {
             </tr>
         `).join('');
 
+        els.objectiveEditSelect.innerHTML = optionHtml(state.qms.objectives, (objective) => objective.title);
+        els.auditEditSelect.innerHTML = optionHtml(state.qms.audits, (audit) => audit.title);
+        fillObjectiveEditForm();
+        fillAuditEditForm();
+
         els.findingsList.innerHTML = (state.qms.findings ?? []).map((finding) => `
             <div class="p-4">
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -456,6 +627,8 @@ if (root) {
         els.fsmsMonitorableSelect.innerHTML = controlOptions.map((control) => {
             return `<option value="${control.type}:${control.id}">${escapeHtml(control.label)}</option>`;
         }).join('');
+        els.haccpPlanEditSelect.innerHTML = optionHtml(state.fsms.haccp_plans, (plan) => `${plan.name} - ${plan.product}`);
+        fillHaccpPlanEditForm();
 
         els.fsmsCcpsBody.innerHTML = (state.fsms.ccps ?? []).map((ccp) => `
             <tr>
@@ -524,6 +697,7 @@ if (root) {
         els.supplierQualitySupplierSelect.innerHTML = (state.supplierQuality.suppliers ?? []).map((supplier) => {
             return `<option value="${supplier.id}">${escapeHtml(supplier.supplier_code)} - ${escapeHtml(supplier.name)}</option>`;
         }).join('');
+        els.supplierEditSelect.innerHTML = optionHtml(state.supplierQuality.suppliers, (supplier) => `${supplier.supplier_code} - ${supplier.name}`);
 
         els.supplierQualityEquipmentBody.innerHTML = (state.supplierQuality.equipment_assets ?? []).map((asset) => `
             <tr>
@@ -540,6 +714,9 @@ if (root) {
         els.supplierQualityEquipmentSelect.innerHTML = (state.supplierQuality.equipment_assets ?? []).map((asset) => {
             return `<option value="${asset.id}">${escapeHtml(asset.asset_tag)} - ${escapeHtml(asset.name)}</option>`;
         }).join('');
+        els.equipmentEditSelect.innerHTML = optionHtml(state.supplierQuality.equipment_assets, (asset) => `${asset.asset_tag} - ${asset.name}`);
+        fillSupplierEditForm();
+        fillEquipmentEditForm();
 
         els.supplierQualityEvaluationsList.innerHTML = (state.supplierQuality.evaluations ?? []).map((evaluation) => `
             <div class="p-4">
@@ -600,6 +777,11 @@ if (root) {
         els.trainingAssignmentSelect.innerHTML = assignmentOptions;
         els.trainingEvidenceDocumentSelect.innerHTML = `<option value="">No evidence document</option>${documentOptions}`;
         els.trainingAwarenessDocumentSelect.innerHTML = documentOptions;
+        els.trainingProgramEditSelect.innerHTML = programOptions;
+        els.trainingAssignmentEditSelect.innerHTML = assignmentOptions;
+        els.trainingAssignmentEditRoleSelect.innerHTML = roleOptions;
+        fillTrainingProgramEditForm();
+        fillTrainingAssignmentEditForm();
 
         els.trainingProgramsBody.innerHTML = (state.training.programs ?? []).map((program) => `
             <tr>
@@ -878,6 +1060,10 @@ if (root) {
         }).join('');
         els.incidentReportSelect.innerHTML = incidentOptions;
         els.emergencyPlanSelect.innerHTML = planOptions;
+        els.incidentReportEditSelect.innerHTML = incidentOptions;
+        els.emergencyPlanEditSelect.innerHTML = planOptions;
+        fillIncidentReportEditForm();
+        fillEmergencyPlanEditForm();
 
         els.incidentReportsBody.innerHTML = (state.incidentResponse.incident_reports ?? []).map((report) => `
             <tr>
@@ -1136,6 +1322,15 @@ if (root) {
     });
 
     els.documentEditSelect.addEventListener('change', fillDocumentEditForm);
+    els.objectiveEditSelect.addEventListener('change', fillObjectiveEditForm);
+    els.auditEditSelect.addEventListener('change', fillAuditEditForm);
+    els.haccpPlanEditSelect.addEventListener('change', fillHaccpPlanEditForm);
+    els.supplierEditSelect.addEventListener('change', fillSupplierEditForm);
+    els.equipmentEditSelect.addEventListener('change', fillEquipmentEditForm);
+    els.trainingProgramEditSelect.addEventListener('change', fillTrainingProgramEditForm);
+    els.trainingAssignmentEditSelect.addEventListener('change', fillTrainingAssignmentEditForm);
+    els.incidentReportEditSelect.addEventListener('change', fillIncidentReportEditForm);
+    els.emergencyPlanEditSelect.addEventListener('change', fillEmergencyPlanEditForm);
 
     els.documentEditForm.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -1266,6 +1461,38 @@ if (root) {
         }
     });
 
+    els.objectiveEditForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.objectiveEditForm);
+        const objectiveId = els.objectiveEditSelect.value;
+
+        if (!objectiveId) {
+            showStatus('Select an objective to edit.', 'error');
+            return;
+        }
+
+        const currentValue = form.get('current_value');
+
+        try {
+            await api(tenantPath(`/qms/objectives/${objectiveId}`), {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    title: form.get('title'),
+                    measurement_method: form.get('measurement_method'),
+                    target_value: Number(form.get('target_value')),
+                    current_value: currentValue === '' ? null : Number(currentValue),
+                    owner_id: Number(form.get('owner_id')),
+                    due_date: form.get('due_date') || null,
+                    status: form.get('status'),
+                }),
+            });
+            await loadWorkspace();
+            showStatus('Quality objective updated.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
     els.auditForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const form = new FormData(els.auditForm);
@@ -1284,6 +1511,35 @@ if (root) {
             els.auditForm.reset();
             await loadWorkspace();
             showStatus('Audit created.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.auditEditForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.auditEditForm);
+        const auditId = els.auditEditSelect.value;
+
+        if (!auditId) {
+            showStatus('Select an audit to edit.', 'error');
+            return;
+        }
+
+        try {
+            await api(tenantPath(`/qms/audits/${auditId}`), {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    title: form.get('title'),
+                    scope: form.get('scope'),
+                    lead_auditor_id: Number(form.get('lead_auditor_id')),
+                    scheduled_date: form.get('scheduled_date'),
+                    status: form.get('status'),
+                    summary: form.get('summary') || null,
+                }),
+            });
+            await loadWorkspace();
+            showStatus('Audit updated.');
         } catch (error) {
             showStatus(error.message, 'error');
         }
@@ -1308,6 +1564,35 @@ if (root) {
             els.haccpPlanForm.reset();
             await loadWorkspace();
             showStatus('HACCP plan created.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.haccpPlanEditForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.haccpPlanEditForm);
+        const planId = els.haccpPlanEditSelect.value;
+
+        if (!planId) {
+            showStatus('Select a HACCP plan to edit.', 'error');
+            return;
+        }
+
+        try {
+            await api(tenantPath(`/fsms/haccp-plans/${planId}`), {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    name: form.get('name'),
+                    product: form.get('product'),
+                    scope: form.get('scope'),
+                    owner_id: Number(form.get('owner_id')),
+                    effective_date: form.get('effective_date') || null,
+                    status: form.get('status'),
+                }),
+            });
+            await loadWorkspace();
+            showStatus('HACCP plan updated.');
         } catch (error) {
             showStatus(error.message, 'error');
         }
@@ -1375,6 +1660,36 @@ if (root) {
         }
     });
 
+    els.supplierEditForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.supplierEditForm);
+        const supplierId = els.supplierEditSelect.value;
+
+        if (!supplierId) {
+            showStatus('Select a supplier to edit.', 'error');
+            return;
+        }
+
+        try {
+            await api(tenantPath(`/supplier-quality/suppliers/${supplierId}`), {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    name: form.get('name'),
+                    category: form.get('category'),
+                    contact_email: form.get('contact_email') || null,
+                    owner_id: Number(form.get('owner_id')),
+                    approval_status: form.get('approval_status'),
+                    risk_level: form.get('risk_level'),
+                    approved_until: form.get('approved_until') || null,
+                }),
+            });
+            await loadWorkspace();
+            showStatus('Supplier updated.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
     els.supplierEvaluationForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const form = new FormData(els.supplierEvaluationForm);
@@ -1420,6 +1735,36 @@ if (root) {
             els.equipmentForm.reset();
             await loadWorkspace();
             showStatus('Equipment created.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.equipmentEditForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.equipmentEditForm);
+        const equipmentId = els.equipmentEditSelect.value;
+
+        if (!equipmentId) {
+            showStatus('Select equipment to edit.', 'error');
+            return;
+        }
+
+        try {
+            await api(tenantPath(`/supplier-quality/equipment/${equipmentId}`), {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    asset_tag: form.get('asset_tag'),
+                    name: form.get('name'),
+                    location: form.get('location'),
+                    owner_id: Number(form.get('owner_id')),
+                    calibration_interval_days: Number(form.get('calibration_interval_days')),
+                    critical_to_food_safety: form.get('critical_to_food_safety') === 'on',
+                    status: form.get('status'),
+                }),
+            });
+            await loadWorkspace();
+            showStatus('Equipment updated.');
         } catch (error) {
             showStatus(error.message, 'error');
         }
@@ -1482,6 +1827,37 @@ if (root) {
         }
     });
 
+    els.trainingProgramEditForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.trainingProgramEditForm);
+        const programId = els.trainingProgramEditSelect.value;
+        const refresherDays = form.get('refresher_interval_days');
+
+        if (!programId) {
+            showStatus('Select a training program to edit.', 'error');
+            return;
+        }
+
+        try {
+            await api(tenantPath(`/training/programs/${programId}`), {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    code: form.get('code'),
+                    title: form.get('title'),
+                    iso_clause: form.get('iso_clause') || null,
+                    delivery_method: form.get('delivery_method') || 'Classroom',
+                    owner_id: Number(form.get('owner_id')),
+                    refresher_interval_days: refresherDays === '' ? null : Number(refresherDays),
+                    status: form.get('status'),
+                }),
+            });
+            await loadWorkspace();
+            showStatus('Training program updated.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
     els.trainingRequirementForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const form = new FormData(els.trainingRequirementForm);
@@ -1526,6 +1902,35 @@ if (root) {
             els.trainingAssignmentForm.reset();
             await loadWorkspace();
             showStatus('Training assignment created.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.trainingAssignmentEditForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.trainingAssignmentEditForm);
+        const assignmentId = els.trainingAssignmentEditSelect.value;
+        const roleId = form.get('required_for_role_id');
+
+        if (!assignmentId) {
+            showStatus('Select a training assignment to edit.', 'error');
+            return;
+        }
+
+        try {
+            await api(tenantPath(`/training/assignments/${assignmentId}`), {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    user_id: Number(form.get('user_id')),
+                    required_for_role_id: roleId ? Number(roleId) : null,
+                    due_date: form.get('due_date'),
+                    status: form.get('status'),
+                    notes: form.get('notes') || null,
+                }),
+            });
+            await loadWorkspace();
+            showStatus('Training assignment updated.');
         } catch (error) {
             showStatus(error.message, 'error');
         }
@@ -1633,6 +2038,39 @@ if (root) {
         }
     });
 
+    els.incidentReportEditForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.incidentReportEditForm);
+        const reportId = els.incidentReportEditSelect.value;
+        const detectedAt = form.get('detected_at')
+            ? new Date(form.get('detected_at')).toISOString()
+            : null;
+
+        if (!reportId) {
+            showStatus('Select an incident to edit.', 'error');
+            return;
+        }
+
+        try {
+            await api(tenantPath(`/incident-response/reports/${reportId}`), {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    title: form.get('title'),
+                    severity: form.get('severity'),
+                    status: form.get('status'),
+                    owner_id: Number(form.get('owner_id')),
+                    detected_at: detectedAt,
+                    description: form.get('description'),
+                    immediate_containment: form.get('immediate_containment') || null,
+                }),
+            });
+            await loadWorkspace();
+            showStatus('Incident updated.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
     els.incidentActionForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const form = new FormData(els.incidentActionForm);
@@ -1680,6 +2118,39 @@ if (root) {
             els.emergencyPlanForm.reset();
             await loadWorkspace();
             showStatus('Emergency plan created.');
+        } catch (error) {
+            showStatus(error.message, 'error');
+        }
+    });
+
+    els.emergencyPlanEditForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(els.emergencyPlanEditForm);
+        const planId = els.emergencyPlanEditSelect.value;
+        const responseSteps = String(form.get('response_steps') ?? '')
+            .split('\n')
+            .map((step) => step.trim())
+            .filter(Boolean);
+
+        if (!planId) {
+            showStatus('Select an emergency plan to edit.', 'error');
+            return;
+        }
+
+        try {
+            await api(tenantPath(`/incident-response/emergency-plans/${planId}`), {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    name: form.get('name'),
+                    scenario: form.get('scenario'),
+                    owner_id: Number(form.get('owner_id')),
+                    review_frequency_days: Number(form.get('review_frequency_days') || 365),
+                    response_steps: responseSteps,
+                    status: form.get('status'),
+                }),
+            });
+            await loadWorkspace();
+            showStatus('Emergency plan updated.');
         } catch (error) {
             showStatus(error.message, 'error');
         }
@@ -1759,6 +2230,8 @@ if (root) {
         const approveButton = event.target.closest('[data-approve-id]');
         const completeButton = event.target.closest('[data-complete-task-id]');
         const downloadDocumentButton = event.target.closest('[data-download-document-id]');
+        const reviewSupersededButton = event.target.closest('[data-review-superseded-document-id]');
+        const pruneVersionButton = event.target.closest('[data-prune-document-id]');
         const previewPacketButton = event.target.closest('[data-preview-packet-id]');
         const downloadPacketButton = event.target.closest('[data-download-packet-id]');
         const pdfPacketButton = event.target.closest('[data-pdf-packet-id]');
@@ -1786,6 +2259,40 @@ if (root) {
                 showStatus('Workflow task completed.');
             } catch (error) {
                 showStatus(error.message, 'error');
+            }
+        }
+
+        if (reviewSupersededButton) {
+            const notes = window.prompt('Review notes', 'Superseded version verified for retention.');
+
+            if (notes !== null) {
+                try {
+                    await api(tenantPath(`/documents/${reviewSupersededButton.dataset.reviewSupersededDocumentId}/versions/${reviewSupersededButton.dataset.reviewSupersededVersionId}/superseded-review`), {
+                        method: 'PATCH',
+                        body: JSON.stringify({ notes }),
+                    });
+                    await loadWorkspace();
+                    showStatus('Superseded version reviewed.');
+                } catch (error) {
+                    showStatus(error.message, 'error');
+                }
+            }
+        }
+
+        if (pruneVersionButton) {
+            const reason = window.prompt('Prune reason', 'Retention expired and storage is no longer required.');
+
+            if (reason !== null) {
+                try {
+                    await api(tenantPath(`/documents/${pruneVersionButton.dataset.pruneDocumentId}/versions/${pruneVersionButton.dataset.pruneVersionId}/prune`), {
+                        method: 'POST',
+                        body: JSON.stringify({ reason }),
+                    });
+                    await loadWorkspace();
+                    showStatus('Document version storage pruned.');
+                } catch (error) {
+                    showStatus(error.message, 'error');
+                }
             }
         }
 

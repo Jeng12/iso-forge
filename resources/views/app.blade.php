@@ -183,6 +183,7 @@
                                     <input name="version_number" required placeholder="Version" class="form-input">
                                     <input name="file" type="file" class="form-input">
                                     <input name="file_path" placeholder="Existing file path" class="form-input">
+                                    <input name="retention_until" type="date" class="form-input">
                                     <select name="owner_id" required class="form-input user-select"></select>
                                     <select name="approver_id" class="form-input user-select"></select>
                                     <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Create</button>
@@ -215,6 +216,7 @@
                                     <input name="version_number" required placeholder="Version" class="form-input">
                                     <input name="file" type="file" class="form-input">
                                     <input name="file_path" placeholder="Existing file path" class="form-input">
+                                    <input name="retention_until" type="date" class="form-input">
                                     <textarea name="change_summary" placeholder="Change summary" class="form-input min-h-20"></textarea>
                                     <select name="approver_id" class="form-input user-select"></select>
                                     <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Create Version</button>
@@ -227,6 +229,13 @@
                                 <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Document Approvals</h3>
                             </div>
                             <div id="approval-list" class="divide-y divide-zinc-100"></div>
+                        </section>
+
+                        <section class="rounded-lg border border-zinc-200 bg-white">
+                            <div class="border-b border-zinc-200 px-4 py-3">
+                                <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Superseded Versions</h3>
+                            </div>
+                            <div id="document-retention-list" class="divide-y divide-zinc-100"></div>
                         </section>
                     </section>
 
@@ -388,6 +397,53 @@
                         </div>
 
                         <div class="grid gap-6 xl:grid-cols-2">
+                            <form id="objective-edit-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">Edit Objective</h3>
+                                <div class="space-y-3">
+                                    <select id="objective-edit-select" name="objective_id" required class="form-input"></select>
+                                    <input name="title" required placeholder="Objective title" class="form-input">
+                                    <input name="measurement_method" required placeholder="Measurement method" class="form-input">
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input name="target_value" required type="number" step="0.01" placeholder="Target" class="form-input">
+                                        <input name="current_value" type="number" step="0.01" placeholder="Current" class="form-input">
+                                    </div>
+                                    <select name="owner_id" class="form-input user-select"></select>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input name="due_date" type="date" class="form-input">
+                                        <select name="status" class="form-input">
+                                            <option>Active</option>
+                                            <option>At Risk</option>
+                                            <option>Completed</option>
+                                            <option>Retired</option>
+                                        </select>
+                                    </div>
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Save</button>
+                                </div>
+                            </form>
+
+                            <form id="audit-edit-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">Edit Audit</h3>
+                                <div class="space-y-3">
+                                    <select id="audit-edit-select" name="audit_id" required class="form-input"></select>
+                                    <input name="title" required placeholder="Audit title" class="form-input">
+                                    <textarea name="scope" required placeholder="Scope" class="form-input min-h-20"></textarea>
+                                    <select name="lead_auditor_id" class="form-input user-select"></select>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input name="scheduled_date" required type="date" class="form-input">
+                                        <select name="status" class="form-input">
+                                            <option>Planned</option>
+                                            <option>In Progress</option>
+                                            <option>Completed</option>
+                                            <option>Cancelled</option>
+                                        </select>
+                                    </div>
+                                    <textarea name="summary" placeholder="Summary" class="form-input min-h-20"></textarea>
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Save</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="grid gap-6 xl:grid-cols-2">
                             <section class="rounded-lg border border-zinc-200 bg-white">
                                 <div class="border-b border-zinc-200 px-4 py-3">
                                     <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Audit Findings</h3>
@@ -437,6 +493,25 @@
                                 </div>
                             </form>
                         </div>
+
+                        <form id="haccp-plan-edit-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                            <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">Edit HACCP Plan</h3>
+                            <div class="grid gap-3 lg:grid-cols-3">
+                                <select id="haccp-plan-edit-select" name="haccp_plan_id" required class="form-input"></select>
+                                <input name="name" required placeholder="Plan name" class="form-input">
+                                <input name="product" required placeholder="Product" class="form-input">
+                                <textarea name="scope" required placeholder="Scope" class="form-input min-h-20 lg:col-span-2"></textarea>
+                                <select name="owner_id" class="form-input user-select"></select>
+                                <input name="effective_date" type="date" class="form-input">
+                                <select name="status" class="form-input">
+                                    <option>Draft</option>
+                                    <option>Active</option>
+                                    <option>Under Review</option>
+                                    <option>Retired</option>
+                                </select>
+                                <button class="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Save</button>
+                            </div>
+                        </form>
 
                         <div class="grid gap-6 xl:grid-cols-[1fr_360px]">
                             <section class="rounded-lg border border-zinc-200 bg-white">
@@ -575,6 +650,58 @@
                         </div>
 
                         <div class="grid gap-6 xl:grid-cols-2">
+                            <form id="supplier-edit-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">Edit Supplier</h3>
+                                <div class="space-y-3">
+                                    <select id="supplier-edit-select" name="supplier_id" required class="form-input"></select>
+                                    <input name="name" required placeholder="Supplier name" class="form-input">
+                                    <input name="category" required placeholder="Category" class="form-input">
+                                    <input name="contact_email" type="email" placeholder="Contact email" class="form-input">
+                                    <select name="owner_id" class="form-input user-select"></select>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <select name="approval_status" class="form-input">
+                                            <option>Pending</option>
+                                            <option>Approved</option>
+                                            <option>Conditional</option>
+                                            <option>Rejected</option>
+                                        </select>
+                                        <select name="risk_level" class="form-input">
+                                            <option>Low</option>
+                                            <option>Medium</option>
+                                            <option>High</option>
+                                        </select>
+                                    </div>
+                                    <input name="approved_until" type="date" class="form-input">
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Save</button>
+                                </div>
+                            </form>
+
+                            <form id="equipment-edit-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">Edit Equipment</h3>
+                                <div class="space-y-3">
+                                    <select id="equipment-edit-select" name="equipment_asset_id" required class="form-input"></select>
+                                    <input name="asset_tag" required placeholder="Asset tag" class="form-input">
+                                    <input name="name" required placeholder="Equipment name" class="form-input">
+                                    <input name="location" required placeholder="Location" class="form-input">
+                                    <select name="owner_id" class="form-input user-select"></select>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input name="calibration_interval_days" type="number" min="1" class="form-input">
+                                        <select name="status" class="form-input">
+                                            <option>Active</option>
+                                            <option>Hold</option>
+                                            <option>Retired</option>
+                                        </select>
+                                    </div>
+                                    <label class="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-700">
+                                        <input name="critical_to_food_safety" type="checkbox" class="size-4 rounded border-zinc-300 text-emerald-700 focus:ring-emerald-600">
+                                        Food-safety critical
+                                    </label>
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Save</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="grid gap-6 xl:grid-cols-2">
                             <section class="rounded-lg border border-zinc-200 bg-white">
                                 <div class="border-b border-zinc-200 px-4 py-3">
                                     <h3 class="text-sm font-semibold uppercase tracking-normal text-zinc-600">Supplier Evaluations</h3>
@@ -697,6 +824,47 @@
                             </form>
                         </div>
 
+                        <div class="grid gap-6 xl:grid-cols-2">
+                            <form id="training-program-edit-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">Edit Program</h3>
+                                <div class="space-y-3">
+                                    <select id="training-program-edit-select" name="training_program_id" required class="form-input"></select>
+                                    <input name="code" required placeholder="Program code" class="form-input">
+                                    <input name="title" required placeholder="Title" class="form-input">
+                                    <input name="iso_clause" placeholder="ISO clause" class="form-input">
+                                    <input name="delivery_method" placeholder="Delivery method" class="form-input">
+                                    <select name="owner_id" class="form-input user-select"></select>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input name="refresher_interval_days" type="number" min="1" placeholder="Refresher days" class="form-input">
+                                        <select name="status" class="form-input">
+                                            <option>Active</option>
+                                            <option>Draft</option>
+                                            <option>Retired</option>
+                                        </select>
+                                    </div>
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Save</button>
+                                </div>
+                            </form>
+
+                            <form id="training-assignment-edit-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">Edit Assignment</h3>
+                                <div class="space-y-3">
+                                    <select id="training-assignment-edit-select" name="training_assignment_id" required class="form-input"></select>
+                                    <select name="user_id" class="form-input user-select"></select>
+                                    <select id="training-assignment-edit-role-select" name="required_for_role_id" class="form-input"></select>
+                                    <input name="due_date" required type="date" class="form-input">
+                                    <select name="status" class="form-input">
+                                        <option>Assigned</option>
+                                        <option>Completed</option>
+                                        <option>Needs Coaching</option>
+                                        <option>Cancelled</option>
+                                    </select>
+                                    <textarea name="notes" placeholder="Notes" class="form-input min-h-20"></textarea>
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Save</button>
+                                </div>
+                            </form>
+                        </div>
+
                         <div class="grid gap-6 xl:grid-cols-[1fr_360px]">
                             <section class="rounded-lg border border-zinc-200 bg-white">
                                 <div class="border-b border-zinc-200 px-4 py-3">
@@ -815,6 +983,53 @@
                                     <textarea name="description" required placeholder="Description" class="form-input min-h-20"></textarea>
                                     <textarea name="immediate_containment" placeholder="Immediate containment" class="form-input min-h-20"></textarea>
                                     <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Record</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="grid gap-6 xl:grid-cols-2">
+                            <form id="incident-report-edit-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">Edit Incident</h3>
+                                <div class="space-y-3">
+                                    <select id="incident-report-edit-select" name="incident_report_id" required class="form-input"></select>
+                                    <input name="title" required placeholder="Title" class="form-input">
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <select name="severity" class="form-input">
+                                            <option>Minor</option>
+                                            <option>Major</option>
+                                            <option>Critical</option>
+                                        </select>
+                                        <select name="status" class="form-input">
+                                            <option>Open</option>
+                                            <option>Contained</option>
+                                            <option>Closed</option>
+                                        </select>
+                                    </div>
+                                    <select name="owner_id" class="form-input user-select"></select>
+                                    <input name="detected_at" type="datetime-local" class="form-input">
+                                    <textarea name="description" required placeholder="Description" class="form-input min-h-20"></textarea>
+                                    <textarea name="immediate_containment" placeholder="Immediate containment" class="form-input min-h-20"></textarea>
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Save</button>
+                                </div>
+                            </form>
+
+                            <form id="emergency-plan-edit-form" class="rounded-lg border border-zinc-200 bg-white p-4">
+                                <h3 class="mb-4 text-sm font-semibold uppercase tracking-normal text-zinc-600">Edit Emergency Plan</h3>
+                                <div class="space-y-3">
+                                    <select id="emergency-plan-edit-select" name="emergency_response_plan_id" required class="form-input"></select>
+                                    <input name="name" required placeholder="Plan name" class="form-input">
+                                    <textarea name="scenario" required placeholder="Scenario" class="form-input min-h-20"></textarea>
+                                    <select name="owner_id" class="form-input user-select"></select>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input name="review_frequency_days" type="number" min="1" class="form-input">
+                                        <select name="status" class="form-input">
+                                            <option>Active</option>
+                                            <option>Under Review</option>
+                                            <option>Retired</option>
+                                        </select>
+                                    </div>
+                                    <textarea name="response_steps" placeholder="Response steps, one per line" class="form-input min-h-20"></textarea>
+                                    <button class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Save</button>
                                 </div>
                             </form>
                         </div>

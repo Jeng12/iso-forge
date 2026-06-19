@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ApproveDocumentRequest;
+use App\Http\Requests\PruneDocumentVersionRequest;
 use App\Http\Requests\RequestDocumentApprovalRequest;
+use App\Http\Requests\ReviewSupersededDocumentVersionRequest;
 use App\Http\Requests\StoreDocumentRequest;
 use App\Http\Requests\StoreDocumentVersionRequest;
 use App\Http\Requests\UpdateDocumentRequest;
@@ -75,6 +77,7 @@ class DocumentController extends Controller
                 'file_path' => $fileData['file_path'],
                 'mime_type' => $fileData['mime_type'],
                 'file_size' => $fileData['file_size'],
+                'retention_until' => $data['retention_until'] ?? now()->addYears(6)->toDateString(),
                 'status' => 'Draft',
                 'change_summary' => $data['change_summary'] ?? null,
             ]);
@@ -149,17 +152,29 @@ class DocumentController extends Controller
         );
 
         $document = DB::transaction(function () use ($data, $document, $fileData, $request, $tenant): Document {
+            $previousVersion = $document->currentVersion;
             $version = DocumentVersion::create([
                 'document_id' => $document->id,
                 'version_number' => $data['version_number'],
                 'file_path' => $fileData['file_path'],
                 'mime_type' => $fileData['mime_type'],
                 'file_size' => $fileData['file_size'],
+                'retention_until' => $data['retention_until'] ?? now()->addYears(6)->toDateString(),
                 'status' => 'Draft',
                 'change_summary' => $data['change_summary'] ?? null,
             ]);
 
             $oldValues = $document->toArray();
+
+            if ($previousVersion) {
+                $previousVersion->update([
+                    'status' => 'Superseded',
+                    'superseded_at' => now(),
+                    'superseded_by_id' => $version->id,
+                    'retention_until' => $previousVersion->retention_until ?? now()->addYears(6)->toDateString(),
+                ]);
+            }
+
             $document->update([
                 'current_version_id' => $version->id,
                 'status' => 'Draft',
@@ -204,6 +219,87 @@ class DocumentController extends Controller
             basename($documentVersion->file_path),
             ['Content-Type' => $documentVersion->mime_type ?? 'application/octet-stream'],
         );
+    }
+
+    public function reviewSupersededVersion(
+        ReviewSupersededDocumentVersionRequest $request,
+        Tenant $tenant,
+        Document $document,
+        DocumentVersion $documentVersion
+    ): JsonResponse {
+        abort_unless((int) $document->tenant_id === (int) $tenant->id, 404);
+        abort_unless((int) $documentVersion->document_id === (int) $document->id, 404);
+        abort_if((int) $document->current_version_id === (int) $documentVersion->id, 422, 'Current version cannot be reviewed as superseded.');
+        abort_unless($documentVersion->status === 'Superseded', 422, 'Only superseded versions can be reviewed.');
+
+        $oldValues = $documentVersion->toArray();
+        $documentVersion->update([
+            'superseded_reviewed_at' => now(),
+            'superseded_reviewed_by_id' => $request->user()->id,
+            'superseded_review_notes' => $request->validated('notes'),
+        ]);
+
+        AuditLog::appendFor(
+            $tenant->id,
+            $request->user()->id,
+            'document.version_superseded_reviewed',
+            DocumentVersion::class,
+            $documentVersion->id,
+            $oldValues,
+            $documentVersion->fresh()->toArray(),
+            $request->ip(),
+            $request->userAgent(),
+        );
+
+        return response()->json([
+            'data' => new DocumentResource($document->fresh(['owner:id,name,email,job_title', 'currentVersion.approvals.approver:id,name,email,job_title', 'versions.approvals.approver:id,name,email,job_title'])),
+        ]);
+    }
+
+    public function pruneVersion(
+        PruneDocumentVersionRequest $request,
+        Tenant $tenant,
+        Document $document,
+        DocumentVersion $documentVersion
+    ): JsonResponse {
+        abort_unless((int) $document->tenant_id === (int) $tenant->id, 404);
+        abort_unless((int) $documentVersion->document_id === (int) $document->id, 404);
+        abort_if((int) $document->current_version_id === (int) $documentVersion->id, 422, 'Current version storage cannot be pruned.');
+        abort_if($documentVersion->pruned_at, 422, 'Document version storage has already been pruned.');
+        abort_if($documentVersion->retention_until && $documentVersion->retention_until->isFuture(), 422, 'Document version is still inside its retention period.');
+
+        $data = $request->validated();
+        $oldValues = $documentVersion->toArray();
+        $stored = Storage::disk('local')->exists($documentVersion->file_path);
+
+        if ($stored) {
+            Storage::disk('local')->delete($documentVersion->file_path);
+        }
+
+        $documentVersion->update([
+            'pruned_at' => now(),
+            'pruned_by_id' => $request->user()->id,
+            'prune_reason' => $data['reason'],
+        ]);
+
+        AuditLog::appendFor(
+            $tenant->id,
+            $request->user()->id,
+            'document.version_pruned',
+            DocumentVersion::class,
+            $documentVersion->id,
+            $oldValues,
+            [
+                ...$documentVersion->fresh()->toArray(),
+                'stored_file_deleted' => $stored,
+            ],
+            $request->ip(),
+            $request->userAgent(),
+        );
+
+        return response()->json([
+            'data' => new DocumentResource($document->fresh(['owner:id,name,email,job_title', 'currentVersion.approvals.approver:id,name,email,job_title', 'versions.approvals.approver:id,name,email,job_title'])),
+        ]);
     }
 
     public function approve(ApproveDocumentRequest $request, Tenant $tenant, DocumentApproval $documentApproval): JsonResponse

@@ -48,6 +48,8 @@ All tenant routes use:
 - `PATCH /documents/{document}`
 - `POST /documents/{document}/versions`
 - `GET /documents/{document}/versions/{documentVersion}/download`
+- `PATCH /documents/{document}/versions/{documentVersion}/superseded-review`
+- `POST /documents/{document}/versions/{documentVersion}/prune`
 - `GET /document-approvals`
 - `POST /documents/{document}/approvals`
 - `POST /document-approvals/{documentApproval}/approve`
@@ -56,7 +58,9 @@ All tenant routes use:
 
 Document create/update/version and approval actions are validated through FormRequest classes. Validation failures return Laravel's standard `422` response with an `errors` object keyed by field name.
 
-Management review packet downloads are available as JSON through `/download` and as a generated PDF through `/pdf`.
+Document versions expose retention and supersession fields: `retention_until`, `superseded_at`, `superseded_by_id`, `superseded_reviewed_at`, `superseded_reviewed_by_id`, `superseded_review_notes`, `pruned_at`, `pruned_by_id`, and `prune_reason`. Superseded versions can be reviewed with optional `notes`, and non-current versions can be pruned once `retention_until` is not in the future.
+
+Management review packet downloads are available as JSON through `/download` and as a generated PDF through `/pdf`. PDF packets include paginated section tables and signature blocks.
 
 ### Risk And CAPA
 
@@ -84,6 +88,7 @@ Management review packet downloads are available as JSON through `/download` and
 
 - `GET /fsms`
 - `POST /fsms/haccp-plans`
+- `PATCH /fsms/haccp-plans/{haccpPlan}`
 - `POST /fsms/haccp-plans/{haccpPlan}/steps`
 - `POST /fsms/process-steps/{processStep}/hazards`
 - `POST /fsms/hazards/{hazardAnalysis}/ccps`
@@ -95,17 +100,21 @@ Management review packet downloads are available as JSON through `/download` and
 
 - `GET /supplier-quality`
 - `POST /supplier-quality/suppliers`
+- `PATCH /supplier-quality/suppliers/{supplier}`
 - `POST /supplier-quality/suppliers/{supplier}/evaluations`
 - `POST /supplier-quality/suppliers/{supplier}/certificates`
 - `POST /supplier-quality/equipment`
+- `PATCH /supplier-quality/equipment/{equipmentAsset}`
 - `POST /supplier-quality/equipment/{equipmentAsset}/calibrations`
 
 ### Training And Competency
 
 - `GET /training`
 - `POST /training/programs`
+- `PATCH /training/programs/{trainingProgram}`
 - `POST /training/requirements`
 - `POST /training/programs/{trainingProgram}/assignments`
+- `PATCH /training/assignments/{trainingAssignment}`
 - `POST /training/assignments/{trainingAssignment}/records`
 - `POST /training/awareness-acknowledgements`
 
@@ -113,9 +122,11 @@ Management review packet downloads are available as JSON through `/download` and
 
 - `GET /incident-response`
 - `POST /incident-response/reports`
+- `PATCH /incident-response/reports/{incidentReport}`
 - `POST /incident-response/reports/{incidentReport}/actions`
 - `PATCH /incident-response/actions/{incidentAction}`
 - `POST /incident-response/emergency-plans`
+- `PATCH /incident-response/emergency-plans/{emergencyResponsePlan}`
 - `POST /incident-response/emergency-plans/{emergencyResponsePlan}/drills`
 
 ## Authorization
